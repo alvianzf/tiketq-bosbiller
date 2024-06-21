@@ -1,18 +1,21 @@
 const createError = require('http-errors');
 
-const notFoundHandler = (req, res, next) => {
-  next(createError(404));
-};
+function notFoundHandler(req, res, next) {
+  next(createError(404, 'Resource not found; Please refer to the documentation provided'));
+}
 
-const errorHandler = (err, req, res, next) => {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+function errorHandler(err, req, res, next) {
+  console.error(err.stack);
 
   res.status(err.status || 500);
-  res.render('error');
-};
+
+  res.json({
+    message: err.message,
+    error: req.app.get('env') === 'development' ? err : {}
+  });
+}
 
 module.exports = {
   notFoundHandler,
-  errorHandler,
+  errorHandler
 };

@@ -7,10 +7,6 @@ const { notFoundHandler, errorHandler } = require('./middleware/error-handler');
 
 const app = express();
 
-// Set up view engine
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-
 // Set up middleware
 app.use(logger('dev'));
 app.use(express.json());
