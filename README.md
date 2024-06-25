@@ -1,13 +1,16 @@
 # API Documentation
 
 **List of APIs**
-* `GET` `/airlines`
-* `GET` `/airports`
-* `POSTT` `/search`
-* `POST` `/book`
-* `GET` `/book-info/:code`
+- [`GET` airlines](#get-airlines)
+- [`GET` airports](#get-airports)
+- [`POST` search](#post-search)
+- [`POST` book](#post-book)
+- [`GET` book-info/:code](#get-book-info)
 
-### `GET` airlines  
+
+---
+
+### `GET` airlines {#get-airlines}
 
 Get a list of all airlines.
 
@@ -52,7 +55,7 @@ Get a list of all airlines.
 ```
 
 ----
-### `GET` airports  
+### `GET` airports {#get-airports}
 
 Get a list of all airports.
 
@@ -92,7 +95,7 @@ Get a list of all airports.
 ```
 ---
 
-### `POST` search  
+### `POST` search {#post-search}
 
 Search flights.
 
@@ -1068,7 +1071,7 @@ Search flights.
 }
 ```
 ---
-### `POST` book  
+### `POST` book {#post-book}
 
 Book searched flights.
 
@@ -1211,7 +1214,7 @@ Book searched flights.
 ```
 ---
 
-### `GET` Book Information  
+### `GET` book-info/:code {#get-book-info}
 
 Search flights.
 
