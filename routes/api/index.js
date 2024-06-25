@@ -5,6 +5,8 @@ const createError = require('http-errors');
 router.use('/airports', require('./airports'));
 router.use('/airlines', require('./airlines'));
 router.use('/search', require('./search'));
+router.use('/book', require('./book'));
+router.use('/book-info', require('./bookinfo'));
 
 router.get('/', (req, res, next) => {
   try {
