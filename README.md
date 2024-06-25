@@ -1,5 +1,12 @@
 # API Documentation
 
+**List of APIs**
+* `GET` `/airlines`
+* `GET` `/airports`
+* `POSTT` `/search`
+* `POST` `/book`
+* `GET` `/book-info/:code`
+
 ### `GET` airlines  
 
 Get a list of all airlines.
