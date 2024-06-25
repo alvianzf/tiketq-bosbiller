@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
 
+router.use('/airports', require('./airports'));
+
 router.get('/', (req, res, next) => {
   try {
     res.send({
@@ -12,4 +14,7 @@ router.get('/', (req, res, next) => {
     next(createError(500, err.message || 'Internal Server Error'));
   }
 });
+
+
+
 module.exports = router;
