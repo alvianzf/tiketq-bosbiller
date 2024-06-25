@@ -4,6 +4,7 @@ const createError = require('http-errors');
 
 router.use('/airports', require('./airports'));
 router.use('/airlines', require('./airlines'));
+router.use('/search', require('./search'));
 
 router.get('/', (req, res, next) => {
   try {
