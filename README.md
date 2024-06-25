@@ -6,6 +6,7 @@
 - [`POST` search](#post-search)
 - [`POST` book](#post-book)
 - [`GET` book-info/:code](#get-book-info)
+- [`GET` search-airport/:query](#get-search-airport)
 
 
 ---
@@ -1208,15 +1209,6 @@ Search flights.
 
 > `/book-info/:book-code`
 
-
-**Request:**
-```json
-{
-    "bookingCode": "FAKEBJSGP"
-}
-```
-
-
 **Response:**
 ```json
 {
@@ -1285,3 +1277,22 @@ Search flights.
 }
 ```
 ---
+### `GET` search-airport/:query
+
+To search airport by code, name, or group
+
+> `/search-airport/:query`
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "code": "TNJ",
+      "name": "Tanjungpinang (TNJ)",
+      "bandara": "Raja Haji Fisabilillah",
+      "group": "Domestik"
+    }
+  ]
+}
+```
