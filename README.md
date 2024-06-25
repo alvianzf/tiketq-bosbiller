@@ -74,23 +74,11 @@ Get a list of all airports.
             "group": "Internasional"
         },
         {
-            "code": "BKI",
-            "name": "Kota Kinabalu (BKI), Malaysia",
-            "bandara": "Kota Kinabalu",
-            "group": "Internasional"
+          "code": "KXB",
+          "name": "Pomala Kolaka Airport (KXB)",
+          "bandara": "Sangia Nibanderia",
+          "group": "Domestik"
         },
-        {
-            "code": "TRV",
-            "name": "Trivandrum (TRV), India",
-            "bandara": "Trivandrum",
-            "group": "Internasional"
-        },
-        {
-            "code": "PVG",
-            "name": "Shanghai Pudong (PVG), China",
-            "bandara": "Shanghai Pudong",
-            "group": "Internasional"
-        }
     ]
 ```
 ---
