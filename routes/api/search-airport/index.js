@@ -6,7 +6,7 @@ router.get('/:query', (req, res, next) => {
     try {
         const query = req.params.query;
         const result = searchAirports(query);
-        return res.send({ result });
+        return res.send({ data: result });
     } catch (err) {
         next(err);
     }
