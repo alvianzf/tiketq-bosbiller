@@ -10,7 +10,7 @@
 
 ---
 
-### `GET` airlines {#get-airlines}
+### `GET` airlines
 
 Get a list of all airlines.
 
@@ -55,7 +55,7 @@ Get a list of all airlines.
 ```
 
 ----
-### `GET` airports {#get-airports}
+### `GET` airports
 
 Get a list of all airports.
 
@@ -95,7 +95,7 @@ Get a list of all airports.
 ```
 ---
 
-### `POST` search {#post-search}
+### `POST` search
 
 Search flights.
 
@@ -1071,7 +1071,7 @@ Search flights.
 }
 ```
 ---
-### `POST` book {#post-book}
+### `POST` book
 
 Book searched flights.
 
@@ -1214,7 +1214,7 @@ Book searched flights.
 ```
 ---
 
-### `GET` book-info/:code {#get-book-info}
+### `GET` book-info/:code
 
 Search flights.
 
