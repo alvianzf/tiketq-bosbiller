@@ -3,6 +3,7 @@ const router = express.Router();
 const createError = require('http-errors');
 
 router.use('/airports', require('./airports'));
+router.use('/airlines', require('./airlines'));
 
 router.get('/', (req, res, next) => {
   try {
