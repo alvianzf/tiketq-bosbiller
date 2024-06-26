@@ -24,8 +24,10 @@ router.post('/', async (req, res, next) => {
             makeRequest(JSON.stringify(requestBody))
         ));
 
-        const data = responses.map(response => response.data.data !== null);
-
+        const data = responses
+            .map(response => response.data.data)
+            .filter(item => item !== null && item !== undefined);
+            
         const returnData = {
             rc: "00",
             msg: "sukses",
