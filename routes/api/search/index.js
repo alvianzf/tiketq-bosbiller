@@ -1,13 +1,13 @@
 const { request } = require('express');
 const makeRequest = require('../../../utils/axios-request');
-
 const router = require('express').Router();
 
+const airlines = ['LIO', 'GAR', 'CIT', 'SRI', 'TRI', "TRA", 'PLA'];
+
 router.post('/', async (req, res, next) => {
+    const { departure, arrival, departureDate, returnDate, adult, child = 0, infant = 0 } = req.body;
 
-    const {airline, departure, arrival, departureDate, returnDate, adult, child = 0, infant = 0} = req.body;
-
-    let requestBody = {
+    const requestBodies = airlines.map(airline => ({
         f: "search",
         airline,
         departure,
@@ -17,14 +17,27 @@ router.post('/', async (req, res, next) => {
         adult,
         child,
         infant
-    };
+    }));
 
     try {
-        const response = await makeRequest(JSON.stringify(requestBody));
-        return res.send(response.data);
-    } catch(err) {
+        // Map over the requestBodies to create an array of Promises
+        const responses = await Promise.all(requestBodies.map(requestBody => 
+            makeRequest(JSON.stringify(requestBody))
+        ));
+
+        // Extract data from each response
+        const data = responses.map(response => response.data.data);
+
+        const returnData = {
+            rc: "00",
+            msg: "sukses",
+            data
+        }
+
+        return res.send(returnData);
+    } catch (err) {
         next(err);
     }
-})
+});
 
 module.exports = router;
