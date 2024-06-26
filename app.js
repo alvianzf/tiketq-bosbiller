@@ -9,7 +9,7 @@ const { notFoundHandler, errorHandler } = require('./middleware/error-handler');
 const app = express();
 
 // Enable CORS
-app.use(cors());
+app.use(cors('*'));
 
 // middleware
 app.use(logger('dev'));
