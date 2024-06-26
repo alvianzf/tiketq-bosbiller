@@ -24,7 +24,7 @@ router.post('/', async (req, res, next) => {
             makeRequest(JSON.stringify(requestBody))
         ));
 
-        const data = responses.map(response => response.data.data);
+        const data = responses.map(response => response.data.data !== null);
 
         const returnData = {
             rc: "00",
