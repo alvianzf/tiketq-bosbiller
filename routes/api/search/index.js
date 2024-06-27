@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
 const { getAsync, setAsync } = require('../../../utils/redisClient');
-const { createRequestBodies, fetchAirlineData } = require('../apiRequestHandler');
+const { createRequestBodies, fetchAirlineData } = require('./apiRequestHandler');
 
 router.post('/', async (req, res, next) => {
   const { departure, arrival, departureDate, returnDate, adult, child, infant } = req.body;
