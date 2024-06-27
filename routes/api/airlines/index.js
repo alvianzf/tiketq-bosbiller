@@ -1,18 +1,34 @@
-const makeRequest = require('../../../utils/axios-request');
+const express = require('express');
+const apiService = require('../../../services/apiService');
+const client = require('../../../utils/redisClient');
 
-const router = require('express').Router();
+const router = express.Router();
 
 router.get('/', async (req, res, next) => {
-    const data = {
-        f: "airlines"
-    }
-    try {
-        const response = await makeRequest(JSON.stringify(data));
+  const requestData = {
+    f: "airlines"
+  };
 
-        return res.send(response.data);
-    } catch (err) {
-        next(err);
+  const cacheKey = 'airlines_data';
+
+  try {
+    let cachedData = await client.get(cacheKey);
+    
+    if (cachedData) {
+      console.log('Returning cached data');
+      return res.send(JSON.parse(cachedData));
+    } else {
+      const responseData = await apiService.fetchData(requestData);
+      
+      await client.set(cacheKey, JSON.stringify(responseData), {
+        EX: 24 * 60 * 60 // Set expiry to 24 hours
+      });
+      
+      res.send(responseData);
     }
-})
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

@@ -1,20 +1,17 @@
-const makeRequest = require('../../../utils/axios-request');
-const router = require('express').Router();
+const express = require('express');
+const apiService = require('../../../services/apiService');
+
+const router = express.Router();
 
 router.get('/:id', async (req, res, next) => {
-    const bookingCode = req.params.id;
+  const bookingCode = req.params.id;
 
-    const requestData = {
-        f: "bookInfo",
-        bookingCode
-    };
-
-    try {
-        const response = await makeRequest(JSON.stringify(requestData));
-        return res.json(response.data);
-    } catch (err) {
-        next(err);
-    }
+  try {
+    const bookingInfo = await apiService.fetchBookingInfo(bookingCode);
+    res.json(bookingInfo);
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

@@ -1,17 +1,17 @@
-
-const makeRequest = require('../../../utils/axios-request');
-const router = require('express').Router();
+const express = require('express');
+const apiService = require('../../../services/apiService');
+const router = express.Router();
 
 router.post('/', async (req, res, next) => {
-    let requestData = req.body;
-    requestData.f = "book";
+  const requestData = req.body;
+  requestData.f = "book";
 
-    try {
-        const result = await makeRequest(JSON.stringify(requestData));
-        return res.json(result.data);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const result = await apiService.postData(requestData);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

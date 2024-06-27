@@ -1,12 +1,17 @@
-const redis = require('redis');
-const { promisify } = require('util');
+const { createClient } = require('redis');
 
-const client = redis.createClient();
+const client = createClient();
 
-const getAsync = promisify(client.get).bind(client);
-const setAsync = promisify(client.set).bind(client);
+client.on('error', (err) => {
+  console.error('Redis client error', err);
+});
 
-module.exports = {
-  getAsync,
-  setAsync
-};
+(async () => {
+  try {
+    await client.connect();
+  } catch (err) {
+    console.error('Redis client connection error', err);
+  }
+})();
+
+module.exports = client;

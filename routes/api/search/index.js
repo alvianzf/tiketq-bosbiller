@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
-const { getAsync, setAsync } = require('../../../utils/redisClient');
+const client = require('../../../utils/redisClient');
 const { createRequestBodies, fetchAirlineData } = require('./apiRequestHandler');
 
 router.post('/', async (req, res, next) => {
@@ -9,7 +9,7 @@ router.post('/', async (req, res, next) => {
   const cacheKey = `${departure}-${arrival}-${departureDate}-${returnDate}-${adult}-${child}-${infant}`;
 
   try {
-    const cachedResponse = await getAsync(cacheKey);
+    const cachedResponse = await client.get(cacheKey);
     
     if (cachedResponse) {
       return res.json(JSON.parse(cachedResponse));
@@ -24,7 +24,10 @@ router.post('/', async (req, res, next) => {
       data
     };
 
-    await setAsync(cacheKey, JSON.stringify(returnData), 'EX', 3600);
+    // Cache the result with 30-minute expiration
+    await client.set(cacheKey, JSON.stringify(returnData), {
+      EX: 1800 // Set expiry to 30 minutes
+    });
 
     res.json(returnData);
   } catch (err) {
