@@ -17,8 +17,6 @@ const axiosInstance = axios.create({
 
 /**
  * Make an Axios request with a dynamic HTTP method.
- * @param {string} method - The HTTP method (e.g., 'get', 'post', 'put', 'delete').
- * @param {string} url - The URL for the request.
  * @param {Object} [data] - The data to be sent as the request body (for methods like POST and PUT).
  * @returns {Promise} - The Axios response promise.
  */
