@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
-const { getAsync, setAsync } = require('../utilies/redisClient');
+const { getAsync, setAsync } = require('../../../utils/redisClient');
 const { createRequestBodies, fetchAirlineData } = require('../apiRequestHandler');
 
 router.post('/', async (req, res, next) => {
