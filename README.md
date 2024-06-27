@@ -1279,7 +1279,7 @@ Search flights.
 ---
 ### `GET` search-airport/:query
 
-To search airport by code, name, or group
+To search airport by code, or name
 
 > `/search-airport/:query`
 
