@@ -16,7 +16,8 @@ async function searchAirports(query) {
 
       const result = airportList.data.filter(airport =>
         airport.code.toLowerCase().includes(lowerCaseQuery) ||
-        airport.name.toLowerCase().includes(lowerCaseQuery)
+        airport.name.toLowerCase().includes(lowerCaseQuery) ||
+        airport.bandara.toLowerCase().includes(lowerCaseQuery)
       );
 
       await client.set(cacheKey, JSON.stringify(result), 'EX', 24 * 60 * 60);
