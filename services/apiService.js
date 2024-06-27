@@ -9,6 +9,21 @@ class ApiService {
       throw new Error(`Failed to fetch data: ${error.message}`);
     }
   }
+
+  async fetchBookingInfo(bookingCode) {
+    try {
+
+        const data = {
+            f: "bookInfo",
+            bookingCode
+        }
+
+        const response = await makeRequest(JSON.stringify(data));
+        return response.data;
+      } catch (error) {
+        throw new Error(`Failed to fetch data: ${error.message}`);
+      }
+  }
 }
 
 module.exports = new ApiService();
