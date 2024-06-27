@@ -3,7 +3,7 @@ const makeRequest = require('../utils/axios-request');
 class ApiService {
   async fetchData(data) {
     try {
-      const response = await makeRequest(JSON.stringify(data));
+      const response = await this.makeRequestWithData(data);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch data: ${error.message}`);
@@ -12,17 +12,25 @@ class ApiService {
 
   async fetchBookingInfo(bookingCode) {
     try {
+      const data = {
+        f: "bookInfo",
+        bookingCode
+      };
 
-        const data = {
-            f: "bookInfo",
-            bookingCode
-        }
+      const response = await this.makeRequestWithData(data);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch booking info: ${error.message}`);
+    }
+  }
 
-        const response = await makeRequest(JSON.stringify(data));
-        return response.data;
-      } catch (error) {
-        throw new Error(`Failed to fetch data: ${error.message}`);
-      }
+  async makeRequestWithData(data) {
+    try {
+      const response = await makeRequest(JSON.stringify(data));
+      return response;
+    } catch (error) {
+      throw error;
+    }
   }
 }
 
