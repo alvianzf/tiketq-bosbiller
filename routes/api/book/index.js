@@ -7,7 +7,7 @@ router.post('/', async (req, res, next) => {
   requestData.f = "book";
 
   try {
-    const result = await apiService.postData(requestData);
+    const result = await apiService.fetchData(requestData);
     res.json(result);
   } catch (error) {
     next(error);
