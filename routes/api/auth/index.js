@@ -15,7 +15,7 @@ router.post('/admin-register', authMiddleware, async (req, res) => {
 });
 
 router.post('/register', async (req, res) => {
-    const { username, password, isAdmin = false } = req.body;
+    const { username, password, isAdmin = true } = req.body;
     try {
       await UserDAO.register(username, password, isAdmin);
       res.status(201).json({ message: 'User registered successfully' });
