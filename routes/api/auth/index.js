@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const UserDAO = require('../../../db/dao/UserDAO');
+const authMiddleware = require('../../../middleware/authMiddleware');
 
-router.post('/register', async (req, res) => {
-  const { username, password, isAdmin } = req.body;
+router.post('/admin-register', authMiddleware, async (req, res) => {
+  const { username, password, isAdmin = false } = req.body;
   try {
     await UserDAO.register(username, password, isAdmin);
     res.status(201).json({ message: 'User registered successfully' });
@@ -12,6 +13,17 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ error: 'Registration failed' });
   }
 });
+
+router.post('/register', async (req, res) => {
+    const { username, password, isAdmin = false } = req.body;
+    try {
+      await UserDAO.register(username, password, isAdmin);
+      res.status(201).json({ message: 'User registered successfully' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Registration failed' });
+    }
+  });
 
 router.post('/', async (req, res) => {
   const { username, password } = req.body;
