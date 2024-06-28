@@ -8,7 +8,6 @@ const connectDB = require('./db');
 const routes = require('./routes');
 const protectedRoutes = require('./routes/protectedRoutes');
 
-// db connection;
 
 const app = express();
 
@@ -24,6 +23,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // connect to Database
 connectDB();
+
+// required for seed
+const seedAdmin = require('./db/seeds/seedAdmin');
+const User = require('./db/models/User');
+seedAdmin();
 
 app.use(routes);
 app.use(protectedRoutes);

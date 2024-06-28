@@ -13,7 +13,7 @@ const FlightBookingSchema = new mongoose.Schema({
     default: Date.now,
     set: toGMT7
   },
-  book_no: { type: String, required: true }
+  book_no: { type: String, required: true },
   payment_status: { type: Boolean, default: false }
 }, { timestamps: true });
 
