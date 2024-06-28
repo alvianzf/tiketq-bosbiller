@@ -8,7 +8,6 @@ const connectDB = require('./db');
 const routes = require('./routes');
 const protectedRoutes = require('./routes/protectedRoutes');
 
-
 const app = express();
 
 // Enable CORS
@@ -32,10 +31,8 @@ seedAdmin();
 app.use(routes);
 app.use(protectedRoutes);
 
-// Catch 404 and forward to error handler
+// Error handlers
 app.use(notFoundHandler);
-
-// Error handler
 app.use(errorHandler);
 
 module.exports = app;
