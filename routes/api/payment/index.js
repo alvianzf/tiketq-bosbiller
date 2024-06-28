@@ -4,7 +4,6 @@ const router = express.Router();
 
 router.post('/', async (req, res, next) => {
     const {bookingCode, nominal} = req.query;
-
     const requestData = {
         f: "payment",
         bookingCode,
