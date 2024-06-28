@@ -8,7 +8,6 @@ const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD;
 
 async function seedAdmin() {
   try {
-    // Check if admin user already exists
     const existingAdmin = await User.findOne({ username: DEFAULT_USER });
 
     if (existingAdmin) {
@@ -16,13 +15,12 @@ async function seedAdmin() {
       return;
     }
 
-    // Create admin user
     const password = DEFAULT_PASSWORD;
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
 
     const adminUser = new User({
-      username: 'admin',
+      username: DEFAULT_USER,
       password: hash,
       isAdmin: true
     });
