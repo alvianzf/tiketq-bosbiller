@@ -12,7 +12,9 @@ const FlightBookingSchema = new mongoose.Schema({
     required: true,
     default: Date.now,
     set: toGMT7
-  }
+  },
+  book_no: { type: String, required: true }
+  payment_status: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('FlightBooking', FlightBookingSchema);
