@@ -5,7 +5,7 @@ const logger = require('morgan');
 const cors = require('cors');
 const indexRouter = require('./routes/index');
 const { notFoundHandler, errorHandler } = require('./middleware/error-handler');
-const connectDB = require('./utils/db');
+const connectDB = require('./db');
 
 // db connection;
 
