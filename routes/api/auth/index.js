@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const UserDAO = require('../../db/dao/UserDAO');
+const UserDAO = require('../../../db/dao/UserDAO');
 
 router.post('/register', async (req, res) => {
   const { username, password, isAdmin } = req.body;
@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/', async (req, res) => {
   const { username, password } = req.body;
   try {
     const user = await UserDAO.findByUsername(username);
