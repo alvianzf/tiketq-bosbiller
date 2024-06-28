@@ -14,6 +14,33 @@ router.post('/admin-register', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/admin-login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+      const user = await UserDAO.findByUsername(username);
+  
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      const isMatch = await user.comparePassword(password);
+  
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+  
+      if (user.isAdmin) {
+        const token = user.generateJWT();
+        return res.json({ token });
+      } else {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
 router.post('/register', async (req, res) => {
     const { username, password, isAdmin = true } = req.body;
     try {
