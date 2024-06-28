@@ -21,7 +21,11 @@ UserSchema.pre('save', async function(next) {
 });
 
 UserSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (err) {
+    throw new Error(err);
+  }
 };
 
 UserSchema.methods.generateJWT = function() {
