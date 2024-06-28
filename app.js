@@ -5,6 +5,9 @@ const logger = require('morgan');
 const cors = require('cors');
 const indexRouter = require('./routes/index');
 const { notFoundHandler, errorHandler } = require('./middleware/error-handler');
+const connectDB = require('./utils/db');
+
+// db connection;
 
 const app = express();
 
@@ -17,6 +20,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// connect to Database
+connectDB();
 
 app.use('/', indexRouter);
 
