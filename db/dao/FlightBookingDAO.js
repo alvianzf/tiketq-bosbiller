@@ -26,6 +26,11 @@ class FlightBookingDAO {
     return await FlightBooking.find({ book_no });
   }
 
+  async findBookingsByUsername(username) {
+    const regex = new RegExp(username, 'i');
+    return await FlightBooking.find({ passenger_username: regex });
+  }
+
   async findBookingsByName(name) {
     const regex = new RegExp(name, 'i');
     return await FlightBooking.find({ passenger_name: regex });
@@ -43,7 +48,7 @@ class FlightBookingDAO {
   async findAllBookingsSortedByBookDate() {
     return await FlightBooking.find().sort({ book_date: 1 });
   }
-
+  
   async findAllBookingsSortedByFlightDate() {
     return await FlightBooking.find().sort({ flight_date: 1 });
   }
