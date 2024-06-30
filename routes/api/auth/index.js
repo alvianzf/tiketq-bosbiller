@@ -56,7 +56,6 @@ router.post('/', async (req, res) => {
   const { username, password } = req.body;
   try {
     const user = await UserDAO.findByUsername(username);
-    console.log(user);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

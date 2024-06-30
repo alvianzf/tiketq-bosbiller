@@ -14,8 +14,6 @@ UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
 
   try {
-    console.log(this.user)
-    console.log(this.password)
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
@@ -27,12 +25,7 @@ UserSchema.pre('save', async function(next) {
 
 UserSchema.methods.comparePassword = async function(candidatePassword) {
   try {
-    console.log({candidatePassword})
-    console.log({password: this.password})
-    return await bcrypt.compare(candidatePassword, this.password, (err, isMatch) => {
-      if (err) throw err;
-      console.log('Password Match:', isMatch);
-    });
+    return await bcrypt.compare(candidatePassword, this.password);
   } catch (err) {
     console.log(err)
     throw new Error(err);
