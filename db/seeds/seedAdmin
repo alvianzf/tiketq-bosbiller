@@ -15,12 +15,11 @@ async function seedAdmin() {
     }
 
     const password = DEFAULT_PASSWORD;
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
+    console.log({DEFAULT_USER, password})
 
     const adminUser = new User({
       username: DEFAULT_USER,
-      password: hash,
+      password: DEFAULT_PASSWORD,
       isAdmin: true
     });
 

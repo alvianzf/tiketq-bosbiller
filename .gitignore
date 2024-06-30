@@ -3,3 +3,6 @@ node_modules/
 
 # environtment variables
 .env
+
+# redis cache dump files
+*.rdb
