@@ -3,9 +3,10 @@ const router = express.Router();
 
 // Define routes here
 router.get('/', (req, res, next) => {
-  res.render('index', { title: 'Express' });
-
   next();
+
+  return res.status(401).send({status: 401, msg: "restricted"})
+
 });
 
 router.use('/api', require('./api'));
