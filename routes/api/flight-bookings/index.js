@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const bookings = await FlightBookingDAO.findAllBookings();
+    const bookings = await FlightBookingDAO.findAllBookingsSortedByBookDate();
     res.status(200).json(bookings);
   } catch (err) {
     console.error(err);
