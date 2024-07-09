@@ -10,6 +10,7 @@ const bookRouter = require('./book');
 const bookInfoRouter = require('./bookinfo');
 const searchAirportRouter = require('./search-airport');
 const authRouter = require('./auth');
+const paymentRouter = require('./payment');
 
 // Route configurations
 router.use('/airports', airportsRouter);
@@ -19,6 +20,7 @@ router.use('/book', bookRouter);
 router.use('/book-info', bookInfoRouter);
 router.use('/search-airport', searchAirportRouter);
 router.use('/auth', authRouter);
+router.use('/payment', paymentRouter);
 
 // Root endpoint
 router.get('/', (req, res, next) => {
