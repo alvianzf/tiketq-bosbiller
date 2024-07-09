@@ -3,7 +3,7 @@ const apiService = require('../../../services/apiService');
 const router = express.Router();
 
 router.post('/', async (req, res, next) => {
-    const {bookingCode, nominal} = req.query;
+    const {bookingCode, nominal} = req.body;
     const requestData = {
         f: "payment",
         bookingCode,
