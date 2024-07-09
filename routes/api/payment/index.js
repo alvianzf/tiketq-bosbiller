@@ -18,4 +18,11 @@ router.post('/', async (req, res, next) => {
     }
 })
 
+router.get('/', (req, res) => {
+    return res.json({
+        status: 404,
+        message: "Not Found"
+    });
+})
+
 module.exports = router;
