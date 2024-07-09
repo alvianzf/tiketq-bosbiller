@@ -1,8 +1,18 @@
 const FlightBooking = require('../models/FlightBooking');
+const moment = require('moment');
 
 class FlightBookingDAO {
-  async createBooking(passenger_name, amount, flight_date, flight_carrier, book_date) {
-    const newBooking = new FlightBooking({ passenger_name, amount, flight_date, flight_carrier, book_date });
+  async createBooking({ bookingCode, nominal, origin, destination, departureDate, mobile_number, name }) {
+    const newBooking = new FlightBooking({
+      bookingCode,
+      nominal,
+      origin,
+      destination,
+      departureDate,
+      mobile_number,
+      name,
+      book_date: new Date()
+    });
     return await newBooking.save();
   }
 
@@ -23,17 +33,17 @@ class FlightBookingDAO {
   }
 
   async findBookingsByBookNo(book_no) {
-    return await FlightBooking.find({ book_no });
+    return await FlightBooking.find({ bookingCode: book_no });
   }
 
   async findBookingsByUsername(username) {
     const regex = new RegExp(username, 'i');
-    return await FlightBooking.find({ passenger_username: regex });
+    return await FlightBooking.find({ mobile_number: regex });
   }
 
   async findBookingsByName(name) {
     const regex = new RegExp(name, 'i');
-    return await FlightBooking.find({ passenger_name: regex });
+    return await FlightBooking.find({ name: regex });
   }
 
   async findBookingsByPaymentStatus(payment_status) {
@@ -50,7 +60,29 @@ class FlightBookingDAO {
   }
   
   async findAllBookingsSortedByFlightDate() {
-    return await FlightBooking.find().sort({ flight_date: 1 });
+    return await FlightBooking.find().sort({ departureDate: 1 });
+  }
+
+  async updatePaymentStatus(id, payment_status) {
+    return await FlightBooking.findByIdAndUpdate(id, { payment_status }, { new: true });
+  }
+
+  async findBookingsByMonth(month) {
+    const startDate = moment().month(month - 1).startOf('month').toDate();
+    const endDate = moment().month(month - 1).endOf('month').toDate();
+    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
+  }
+
+  async findBookingsThisMonth() {
+    const startDate = moment().startOf('month').toDate();
+    const endDate = moment().endOf('month').toDate();
+    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
+  }
+
+  async findBookingsLastMonth() {
+    const startDate = moment().subtract(1, 'months').startOf('month').toDate();
+    const endDate = moment().subtract(1, 'months').endOf('month').toDate();
+    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
   }
 }
 
