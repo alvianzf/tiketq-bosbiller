@@ -84,6 +84,16 @@ class FlightBookingDAO {
     const endDate = moment().subtract(1, 'months').endOf('month').toDate();
     return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
   }
+
+  async findBookingByCodeAndUpdatePaymentStatus(bookingCode) {
+    const booking = await FlightBooking.findOne({ bookingCode });
+    if (booking) {
+      booking.payment_status = true;
+      await booking.save();
+      return booking;
+    }
+    throw new Error('Booking not found');
+  }
 }
 
 module.exports = new FlightBookingDAO();
