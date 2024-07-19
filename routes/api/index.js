@@ -12,6 +12,7 @@ const searchAirportRouter = require('./search-airport');
 const authRouter = require('./auth');
 const paymentRouter = require('./payment');
 const bookingData = require('./booking-data');
+const users = require('./users')
 
 // Route configurations
 router.use('/airports', airportsRouter);
@@ -23,6 +24,7 @@ router.use('/search-airport', searchAirportRouter);
 router.use('/auth', authRouter);
 router.use('/payment', paymentRouter);
 router.use('/booking-data', bookingData);
+router.use('/users', users);
 
 // Root endpoint
 router.get('/', (req, res, next) => {

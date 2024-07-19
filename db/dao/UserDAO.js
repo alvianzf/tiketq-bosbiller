@@ -10,6 +10,18 @@ class UserDAO {
   async findByUsername(username) {
     return await User.findOne({ username });
   }
+
+  async findAllUsers() {
+    return await User.find();
+  }
+
+  async updateUser(id, payload) {
+    return await User.findByIdAndUpdate(id, payload)
+  }
+
+  async deleteUser(id) {
+    return await User.findByIdAndDelete(id);
+  }
 }
 
 module.exports = new UserDAO();
