@@ -10,6 +10,16 @@ router.get('/', async (req, res, next) => {
     }
 });
 
+router.post('/register', async (req, res, next) => {
+    try {
+        const { username, password } = req.body;
+        await UserDAO.register(username, password, true);
+        return res.status(201).send({ msg: "Added new user" });
+    } catch (err) {
+        return next(err);
+    }
+});
+
 router.get('/:username', async (req, res, next) => {
     try {
         const user = await UserDAO.findByUsername(req.params.username);
