@@ -11,4 +11,14 @@ router.get('/', async (req, res, next) => {
     }
 })
 
+router.delete('/:id', async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const booking = await FlightBookingDAO.deleteBookingById(id);
+        return res.json(booking);
+    } catch (err) {
+        return next(err);
+    }
+})
+
 module.exports = router;
