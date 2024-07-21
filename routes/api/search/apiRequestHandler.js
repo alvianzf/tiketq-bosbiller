@@ -1,6 +1,8 @@
 const makeRequest = require('../../../utils/axios-request');
 const airlines = ['LIO', 'GAR', 'CIT', 'SRI', 'TRI', 'TRA', 'PLA'];
 
+const updateLogoURLs = require('../../../utils/update-logo');
+
 const createRequestBodies = (params) => {
   const { departure, arrival, departureDate, returnDate, adult, child = 0, infant = 0 } = params;
 
@@ -22,7 +24,11 @@ const fetchAirlineData = async (requestBodies) => {
     makeRequest(JSON.stringify(requestBody))
   ));
 
-  return responses.map(response => response.data.data).filter(item => item !== null && item !== undefined);
+  let data = responses.map(response => response.data.data).filter(item => item !== null && item !== undefined);
+
+  data = updateLogoURLs(data);
+
+  return data;
 };
 
 module.exports = {
