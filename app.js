@@ -13,21 +13,25 @@ const app = express();
 // Enable CORS
 app.use(cors('*'));
 
-// middleware
+// Middleware
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// connect to Database
+// Serve static files from 'public' and 'assets' directories
+app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// Connect to Database
 connectDB();
 
-// required for seed
+// Required for seed
 const seedAdmin = require('./db/seeds/seedAdmin');
 const User = require('./db/models/User');
 seedAdmin();
 
+// Use routes
 app.use(routes);
 app.use(protectedRoutes);
 
