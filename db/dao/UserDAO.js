@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
 class UserDAO {
   async register(username, password, isAdmin = false) {
@@ -6,7 +7,6 @@ class UserDAO {
     return await newUser.save();
   }
 
-  // Method to find a user by username
   async findByUsername(username) {
     return await User.findOne({ username });
   }
@@ -16,7 +16,11 @@ class UserDAO {
   }
 
   async updateUser(id, payload) {
-    return await User.findByIdAndUpdate(id, payload)
+    if (payload.password) {
+      const salt = await bcrypt.genSalt(10);
+      payload.password = await bcrypt.hash(payload.password, salt);
+    }
+    return await User.findByIdAndUpdate(id, payload, { new: true });
   }
 
   async deleteUser(id) {
