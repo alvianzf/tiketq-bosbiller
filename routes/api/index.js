@@ -3,38 +3,33 @@ const router = express.Router();
 const createError = require('http-errors');
 
 // Route imports
-const airportsRouter = require('./airports');
-const airlinesRouter = require('./airlines');
-const searchRouter = require('./search');
-const bookRouter = require('./book');
-const bookInfoRouter = require('./bookinfo');
-const searchAirportRouter = require('./search-airport');
-const authRouter = require('./auth');
-const paymentRouter = require('./payment');
-const bookingData = require('./booking-data');
-const users = require('./users')
+const routes = {
+  airports: require('./airports'),
+  airlines: require('./airlines'),
+  search: require('./search'),
+  book: require('./book'),
+  bookInfo: require('./bookinfo'),
+  searchAirport: require('./search-airport'),
+  auth: require('./auth'),
+  payment: require('./payment'),
+  bookingData: require('./booking-data'),
+  users: require('./users')
+};
 
 // Route configurations
-router.use('/airports', airportsRouter);
-router.use('/airlines', airlinesRouter);
-router.use('/search', searchRouter);
-router.use('/book', bookRouter);
-router.use('/book-info', bookInfoRouter);
-router.use('/search-airport', searchAirportRouter);
-router.use('/auth', authRouter);
-router.use('/payment', paymentRouter);
-router.use('/booking-data', bookingData);
-router.use('/users', users);
+Object.entries(routes).forEach(([key, value]) => {
+  router.use(`/${key}`, value);
+});
 
 // Root endpoint
 router.get('/', (req, res, next) => {
   try {
     res.json({
-      data: "/api endpoint, tread carefully",
+      message: "Welcome to the API! Explore the available endpoints for a seamless travel experience.",
       error: null
     });
   } catch (err) {
-    next(createError(500, err.message || 'Internal Server Error'));
+    next(createError(500, err.message || 'An unexpected error occurred. Please try again later.'));
   }
 });
 

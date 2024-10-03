@@ -1,3 +1,10 @@
+/**
+ * Seeds the default admin user into the database if it doesn't already exist.
+ * 
+ * This function checks if an admin user with the default username exists. If not, it creates a new admin user with the default username and password.
+ * 
+ * @returns {void} This function does not return a value. It logs a success or failure message to the console.
+ */
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
@@ -11,11 +18,9 @@ async function seedAdmin() {
     const existingAdmin = await User.findOne({ username: DEFAULT_USER });
 
     if (existingAdmin) {
+      console.log('Admin user already exists.');
       return;
     }
-
-    const password = DEFAULT_PASSWORD;
-    console.log({DEFAULT_USER, password})
 
     const adminUser = new User({
       username: DEFAULT_USER,
@@ -24,9 +29,9 @@ async function seedAdmin() {
     });
 
     await adminUser.save();
-    console.log('Admin user seeded successfully.');
+    console.log(`Admin user seeded successfully with username: ${DEFAULT_USER}.`);
   } catch (err) {
-    console.error('Admin user seeding failed:', err);
+    console.error(`Admin user seeding failed: ${err.message}`);
   }
 }
 

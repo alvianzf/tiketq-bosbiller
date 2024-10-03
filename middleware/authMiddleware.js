@@ -2,10 +2,16 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization').replace('Bearer ', '');
+  const authHeader = req.header('Authorization');
+
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization header missing' });
+  }
+
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
 
   if (!token) {
-    return res.status(401).json({ error: 'Authorization denied' });
+    return res.status(401).json({ error: 'Token missing' });
   }
 
   try {
@@ -13,8 +19,8 @@ const authMiddleware = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    console.error(err);
-    res.status(401).json({ error: 'Token is not valid' });
+    console.error('Token verification failed:', err.message);
+    res.status(401).json({ error: 'Invalid token' });
   }
 };
 

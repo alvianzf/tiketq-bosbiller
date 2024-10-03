@@ -1,16 +1,22 @@
 const router = require('express').Router();
 const UserDAO = require('../../../db/dao/UserDAO');
 
-router.get('/', async (req, res, next) => {
+router.get('/', getAllUsers);
+router.post('/register', registerUser);
+router.get('/:username', getUserByUsername);
+router.put('/:user_id', updateUser);
+router.delete('/:id', deleteUser);
+
+async function getAllUsers(req, res, next) {
     try {
         const users = await UserDAO.findAllUsers();
         return res.status(200).send(users);
     } catch (err) {
         return next(err);
     }
-});
+}
 
-router.post('/register', async (req, res, next) => {
+async function registerUser(req, res, next) {
     try {
         const { username, password } = req.body;
         await UserDAO.register(username, password, true);
@@ -18,9 +24,9 @@ router.post('/register', async (req, res, next) => {
     } catch (err) {
         return next(err);
     }
-});
+}
 
-router.get('/:username', async (req, res, next) => {
+async function getUserByUsername(req, res, next) {
     try {
         const user = await UserDAO.findByUsername(req.params.username);
         if (!user) {
@@ -30,9 +36,9 @@ router.get('/:username', async (req, res, next) => {
     } catch (err) {
         return next(err);
     }
-});
+}
 
-router.put('/:user_id', async (req, res, next) => {
+async function updateUser(req, res, next) {
     try {
         const id = req.params.user_id;
         const { username, password } = req.body;
@@ -45,9 +51,9 @@ router.put('/:user_id', async (req, res, next) => {
     } catch (err) {
         return next(err);
     }
-});
+}
 
-router.delete('/:id', async (req, res, next) => {
+async function deleteUser(req, res, next) {
     try {
         const id = req.params.id;
         const deleted = await UserDAO.deleteUser(id);
@@ -59,6 +65,6 @@ router.delete('/:id', async (req, res, next) => {
     } catch (err) {
         return next(err);
     }
-});
+}
 
 module.exports = router;

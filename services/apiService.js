@@ -29,7 +29,7 @@ class ApiService {
       const response = await makeRequest(JSON.stringify(data));
       return response;
     } catch (error) {
-      throw error;
+      throw new Error(`API request failed: ${error.message}`);
     }
   }
 }

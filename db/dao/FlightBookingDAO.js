@@ -51,8 +51,7 @@ class FlightBookingDAO {
   }
 
   async findBookingsByAirlines(airlines) {
-    const regex = new RegExp(airlines, 'i');
-    return await FlightBooking.find({ flight_carrier: regex });
+    return await this._findByRegex('flight_carrier', airlines);
   }
 
   async findAllBookingsSortedByBookDate() {
@@ -68,31 +67,45 @@ class FlightBookingDAO {
   }
 
   async findBookingsByMonth(month) {
-    const startDate = moment().month(month - 1).startOf('month').toDate();
-    const endDate = moment().month(month - 1).endOf('month').toDate();
-    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
+    return await this._findByDateRange(
+      moment().month(month - 1).startOf('month').toDate(),
+      moment().month(month - 1).endOf('month').toDate()
+    );
   }
 
   async findBookingsThisMonth() {
-    const startDate = moment().startOf('month').toDate();
-    const endDate = moment().endOf('month').toDate();
-    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
+    return await this._findByDateRange(
+      moment().startOf('month').toDate(),
+      moment().endOf('month').toDate()
+    );
   }
 
   async findBookingsLastMonth() {
-    const startDate = moment().subtract(1, 'months').startOf('month').toDate();
-    const endDate = moment().subtract(1, 'months').endOf('month').toDate();
-    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
+    return await this._findByDateRange(
+      moment().subtract(1, 'months').startOf('month').toDate(),
+      moment().subtract(1, 'months').endOf('month').toDate()
+    );
   }
 
   async findBookingByCodeAndUpdatePaymentStatus(bookingCode) {
-    const booking = await FlightBooking.findOne({ bookingCode });
-    if (booking) {
-      booking.payment_status = true;
-      await booking.save();
-      return booking;
+    const booking = await FlightBooking.findOneAndUpdate(
+      { bookingCode },
+      { payment_status: true },
+      { new: true }
+    );
+    if (!booking) {
+      throw new Error('Booking not found');
     }
-    throw new Error('Booking not found');
+    return booking;
+  }
+
+  async _findByRegex(field, value) {
+    const regex = new RegExp(value, 'i');
+    return await FlightBooking.find({ [field]: regex });
+  }
+
+  async _findByDateRange(startDate, endDate) {
+    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
   }
 }
 
