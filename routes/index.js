@@ -32,6 +32,7 @@ router.get('/', (req, res, next) => {
  * Mounting the API routes at the '/api' path.
  */
 router.use('/api', require('./api'));
+router.use('/api/ferry', require('./ferries'));
 
 /**
  * Exporting the router instance to be used in the application.
