@@ -1,7 +1,7 @@
 /**
  * Importing required modules and utilities.
  */
-const client = require('../utils/redisClient');
+const getRedisClient = require('../utils/redisClient');
 const apiService = require('./apiService');
 
 /**
@@ -24,6 +24,7 @@ async function searchAirports(query) {
     /**
      * Attempting to retrieve cached data for the search query.
      */
+    const client = await getRedisClient();
     const cachedData = await client.get(cacheKey);
     if (cachedData) {
       console.log('Returning cached data for airport search:', lowerCaseQuery);
@@ -66,6 +67,7 @@ async function cachedList() {
     /**
      * Attempting to retrieve cached data for the airport list.
      */
+    const client = await getRedisClient();
     const cachedData = await client.get('airports_data');
     if (cachedData) {
       /**

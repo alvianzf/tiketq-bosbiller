@@ -32,7 +32,7 @@ router.get('/:query', async (req, res, next) => {
     if (cachedData) {
       // Return cached data if available
       console.log('Returning cached data for airport search:', query);
-      return res.json({ message: 'Airport search result from cache', data: JSON.parse(cachedData) });
+      return res.json(JSON.parse(cachedData));
     } else {
       // Fetch data from service if not cached
       const result = await airportService.searchAirports(query);
@@ -42,7 +42,7 @@ router.get('/:query', async (req, res, next) => {
         EX: 30 * 24 * 60 * 60 // Set expiry to 30 days
       });
 
-      res.json({ message: 'Airport search result fetched and cached', data: result });
+      res.json(result);
     }
   } catch (error) {
     next(error);
