@@ -1,6 +1,6 @@
 const express = require('express');
 const apiService = require('../../../services/apiService');
-const client = require('../../../utils/redisClient');
+const getRedisClient = require('../../../utils/redisClient');
 
 const router = express.Router();
 
@@ -20,6 +20,7 @@ router.get('/', async (req, res, next) => {
   const cacheKey = 'airports_data';
 
   try {
+    const client = await getRedisClient();
     const cachedData = await client.get(cacheKey);
     if (cachedData) {
       console.log('Returning cached data');
