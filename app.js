@@ -29,7 +29,6 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-
 // Connect to Database
 connectDB();
 

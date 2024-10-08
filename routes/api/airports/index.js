@@ -8,9 +8,9 @@ const router = express.Router();
  * Handles GET request for airports data.
  * 
  * This function first checks if the data is cached in Redis. If it is, it returns the cached data.
- * If not, it fetches the data from the API service, caches it, and then returns it.
+ * If not, it fetches the data from the API service, sorts it, caches it, and then returns it.
  * 
- * @param {NextFunction} next - The next middleware function in the application’s request-response cycle.
+ * @param {NextFunction} next - The next middleware function in the application's request-response cycle.
  */
 router.get('/', async (req, res, next) => {
   const requestData = {
@@ -23,13 +23,17 @@ router.get('/', async (req, res, next) => {
     const cachedData = await client.get(cacheKey);
     if (cachedData) {
       console.log('Returning cached data');
-      return res.status(200).send({ message: 'Airports data retrieved from cache', data: JSON.parse(cachedData) });
+      return res.status(200).send(JSON.parse(cachedData));
     }
 
     const responseData = await apiService.fetchData(requestData);
+    
+    // Sort the data.data array based on the "name" property in ascending order
+    responseData.data.sort((a, b) => a.name.localeCompare(b.name));
+
     await cacheResponse(client, cacheKey, responseData);
 
-    res.status(200).send({ message: 'Airports data fetched and cached', data: responseData });
+    res.status(200).send(responseData);
   } catch (error) {
     next(error);
   }
