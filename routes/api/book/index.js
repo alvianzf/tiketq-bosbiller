@@ -5,23 +5,43 @@ const FlightBookingDAO = require('../../../db/dao/FlightBookingDAO');
 
 /**
  * POST request to book a flight
- * @param {string} bookingCode - The booking code of the flight
- * @param {number} nominal - The nominal value of the booking
- * @param {string} origin - The origin of the flight
- * @param {string} destination - The destination of the flight
- * @param {string} departureDate - The departure date of the flight
- * @param {string} mobile_number - The mobile number of the buyer
- * @param {string} name - The name of the buyer
+ * @param {string} searchId - The search ID for the flight
+ * @param {string} adult - Number of adult passengers
+ * @param {string} child - Number of child passengers
+ * @param {string} infant - Number of infant passengers
+ * @param {Object} buyer - Buyer information
+ * @param {Object} passengers - Passenger information
  */
 router.post('/', async (req, res, next) => {
-  const requestData = { ...req.body, f: "book" };
+  const { searchId, adult, child, infant, buyer, passengers } = req.body;
+  const requestData = { 
+    searchId, 
+    adult, 
+    child, 
+    infant, 
+    buyer, 
+    passengers,
+    f: "book" 
+  };
 
   try {
     const result = await apiService.fetchData(requestData);
     const { bookingCode, nominal } = result.data;
     const { origin, destination, departureDate } = result.data.flightdetail[0];
-    const { mobile_number, name } = result.data.buyer;
-    const saveToDb = { bookingCode, nominal, origin, destination, departureDate, mobile_number, name };
+    const { mobile_number, email } = buyer;
+    const { first_name, last_name } = passengers.adults[0];
+    const name = `${first_name} ${last_name}`;
+    
+    const saveToDb = { 
+      bookingCode, 
+      nominal, 
+      origin, 
+      destination, 
+      departureDate, 
+      mobile_number, 
+      email,
+      name 
+    };
     console.log(saveToDb);
 
     await FlightBookingDAO.createBooking(saveToDb);
