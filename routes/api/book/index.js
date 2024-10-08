@@ -18,9 +18,9 @@ router.post('/', async (req, res, next) => {
 
   try {
     const result = await apiService.fetchData(requestData);
-    const { bookingCode, nominal, flightdetail, buyer } = result.data;
-    const { origin, destination, departureDate } = flightdetail[0];
-    const { mobile_number, name } = buyer;
+    const { bookingCode, nominal } = result.data;
+    const { origin, destination, departureDate } = result.data.flightdetail[0];
+    const { mobile_number, name } = result.data.buyer;
     const saveToDb = { bookingCode, nominal, origin, destination, departureDate, mobile_number, name };
     console.log(saveToDb);
 
