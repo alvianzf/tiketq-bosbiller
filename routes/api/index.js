@@ -13,7 +13,8 @@ const routes = {
   auth: require('./auth'),
   payment: require('./payment'),
   bookingData: require('./booking-data'),
-  users: require('./users')
+  users: require('./users'),
+  'search-airport': require('./search-airport')
 };
 
 // Route configurations
