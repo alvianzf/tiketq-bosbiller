@@ -29,8 +29,8 @@ router.get('/', async (req, res, next) => {
 
     const responseData = await apiService.fetchData(requestData);
     
-    // Sort the data.data array based on the "name" property in ascending order
-    responseData.data.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort the data array based on the "code" property in ascending order
+    responseData.data.sort((a, b) => a.code.localeCompare(b.code));
 
     await cacheResponse(client, cacheKey, responseData);
 

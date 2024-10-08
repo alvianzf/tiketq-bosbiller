@@ -6,7 +6,9 @@ const DB_URI = `mongodb://localhost:27017/${DB_NAME}`;
 
 const connectDB = async () => {
     try {
-      await mongoose.connect(DB_URI);
+      await mongoose.connect(DB_URI, {
+        serverSelectionTimeoutMS: 5000 // 5 seconds
+      });
       console.log('MongoDB connected');
     } catch (err) {
       console.error('MongoDB connection error:', err);
