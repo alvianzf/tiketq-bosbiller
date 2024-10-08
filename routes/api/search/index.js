@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
-const client = require('../../../utils/redisClient');
+const getRedisClient = require('../../../utils/redisClient');
 const { createRequestBodies, fetchAirlineData } = require('./apiRequestHandler');
 
 /**
@@ -23,6 +23,7 @@ router.post('/', async (req, res, next) => {
   const cacheKey = `${departure}-${arrival}-${departureDate}-${returnDate}-${adult}-${child}-${infant}`;
 
   try {
+    const client = await getRedisClient();
     const cachedResponse = await client.get(cacheKey);
     
     if (cachedResponse) {
