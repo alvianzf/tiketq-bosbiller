@@ -1,5 +1,5 @@
 const express = require('express');
-const apiService = require('../../../services/apiService');
+const createMidtransToken = require('../../../services/createMidtransToken');
 const router = express.Router();
 
 /**
@@ -12,7 +12,7 @@ const router = express.Router();
 router.post('/', async (req, res, next) => {
   try {
     const transactionDetails = req.body;
-    const midtransToken = await apiService.createMidtransToken(transactionDetails);
+    const midtransToken = await createMidtransToken(transactionDetails);
     res.json({ token: midtransToken });
   } catch (error) {
     next(error);
@@ -20,4 +20,3 @@ router.post('/', async (req, res, next) => {
 });
 
 module.exports = router;
-

@@ -9,17 +9,14 @@ const midtransClient = require('midtrans-client');
  */
 async function createMidtransToken(transactionDetails) {
   try {
-    // Initialize Midtrans client
     const snap = new midtransClient.Snap({
       isProduction: process.env.NODE_ENV === 'production',
       serverKey: process.env.MIDTRANS_SERVER_KEY,
       clientKey: process.env.MIDTRANS_CLIENT_KEY
     });
 
-    // Create transaction
     const transaction = await snap.createTransaction(transactionDetails);
 
-    // Return the token
     return transaction.token;
   } catch (error) {
     console.error('Error creating Midtrans token:', error);
