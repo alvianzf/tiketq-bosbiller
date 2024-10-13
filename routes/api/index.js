@@ -8,7 +8,7 @@ const routes = {
   airlines: require('./airlines'),
   search: require('./search'),
   book: require('./book'),
-  bookInfo: require('./bookinfo'),
+  'book-info': require('./bookinfo'),
   searchAirport: require('./search-airport'),
   auth: require('./auth'),
   payment: require('./payment'),
