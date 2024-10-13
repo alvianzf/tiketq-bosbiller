@@ -11,6 +11,8 @@ const router = express.Router();
  */
 router.get('/', (req, res, next) => {
   res.json({
+    error: 'Invalid Request',
+    code: 400,
     message: 'Booking ID required'
   });
 });
