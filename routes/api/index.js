@@ -14,7 +14,8 @@ const routes = {
   payment: require('./payment'),
   bookingData: require('./booking-data'),
   users: require('./users'),
-  'search-airport': require('./search-airport')
+  'search-airport': require('./search-airport'),
+  'create-midtrans-token': require('./midtrans')
 };
 
 // Route configurations
