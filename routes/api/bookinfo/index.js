@@ -14,7 +14,7 @@ router.get('/', (req, res, next) => {
     error: 'Invalid Request',
     code: 400,
     message: 'Booking ID required'
-  });
+  }).status(400);
 });
 
 /**
