@@ -3,18 +3,19 @@ const apiService = require('../../../services/apiService');
 const router = express.Router();
 
 /**
- * Handles GET requests to the root endpoint of bookinfo.
+ * Handles GET requests to fetch all booking information.
  * 
  * @param {Request} req - The request object.
- * @param {Response} res - The response object to send the message back to the client.
+ * @param {Response} res - The response object to send the booking information back to the client.
  * @param {NextFunction} next - The next middleware function in the application's request-response cycle.
  */
-router.get('/', (req, res, next) => {
-  res.json({
-    error: 'Invalid Request',
-    code: 400,
-    message: 'Booking ID required'
-  }).status(400);
+router.get('/', async (req, res, next) => {
+  try {
+    const allBookingInfo = await apiService.fetchBookingInfo();
+    res.json(allBookingInfo);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
