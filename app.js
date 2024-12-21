@@ -18,13 +18,13 @@ app.use(cors('*'));
 
 // Middleware
 app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb', parameterLimit: 10000 }));
 app.use(cookieParser());
 
 // Serve static files from 'public' and 'assets' directories
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/public', express.static(path.join(__dirname, 'public'), { maxAge: 31557600000 }));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: 31557600000 }));
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -38,8 +38,8 @@ const User = require('./db/models/User');
 seedAdmin();
 
 // Use routes
-app.use(routes);
-app.use(protectedRoutes);
+app.use('/api', routes);
+app.use('/api/protected', protectedRoutes);
 
 // Error handlers
 app.use(notFoundHandler);

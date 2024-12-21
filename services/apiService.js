@@ -1,6 +1,15 @@
 const makeRequest = require('../utils/axios-request');
 
+/**
+ * API Service class responsible for making API requests.
+ */
 class ApiService {
+  /**
+   * Fetches data from the API.
+   * 
+   * @param {object} data - Request data.
+   * @returns {object} Response data.
+   */
   async fetchData(data) {
     try {
       const response = await this.makeRequestWithData(data);
@@ -10,6 +19,12 @@ class ApiService {
     }
   }
 
+  /**
+   * Fetches booking information from the API.
+   * 
+   * @param {string} bookingCode - Booking code.
+   * @returns {object} Response data.
+   */
   async fetchBookingInfo(bookingCode) {
     try {
       const data = {
@@ -24,6 +39,12 @@ class ApiService {
     }
   }
 
+  /**
+   * Makes a request to the API with the provided data.
+   * 
+   * @param {object} data - Request data.
+   * @returns {object} Response.
+   */
   async makeRequestWithData(data) {
     try {
       const response = await makeRequest(JSON.stringify(data));

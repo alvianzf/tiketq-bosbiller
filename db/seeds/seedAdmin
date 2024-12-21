@@ -22,9 +22,10 @@ async function seedAdmin() {
       return;
     }
 
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
     const adminUser = new User({
       username: DEFAULT_USER,
-      password: DEFAULT_PASSWORD,
+      password: hashedPassword,
       isAdmin: true
     });
 

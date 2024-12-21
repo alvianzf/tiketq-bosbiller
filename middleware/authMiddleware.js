@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+/**
+ * Authentication middleware to verify JWT tokens.
+ * 
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @param {Function} next - Express next middleware function.
+ */
 const authMiddleware = (req, res, next) => {
   const authHeader = req.header('Authorization');
 
@@ -8,7 +15,7 @@ const authMiddleware = (req, res, next) => {
     return res.status(401).json({ error: 'Authorization header missing' });
   }
 
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+  const token = authHeader.replace(/^Bearer\s+/, '');
 
   if (!token) {
     return res.status(401).json({ error: 'Token missing' });

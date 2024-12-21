@@ -17,20 +17,14 @@ const ASSET_BASE_URL = 'https://api.tiketq.com/assets/maskapai';
  * @returns {any} - The data with updated logo URLs.
  */
 const updateLogoURLs = (data) => {
-  // If data is an array, recursively update each item in the array
   if (Array.isArray(data)) {
-    return data.map(item => updateLogoURLs(item));
-  } 
-  // If data is an object, iterate through its properties and update any strings that match the old URL
-  else if (data !== null && typeof data === 'object') {
+    return data.map(updateLogoURLs);
+  } else if (data !== null && typeof data === 'object') {
     for (const key in data) {
       if (data.hasOwnProperty(key)) {
-        // If the value is a string and contains the old URL, replace it with the new URL
-        if (typeof data[key] === 'string' && data[key].includes('117.102.64.238:1212/assets/maskapai')) {
-          data[key] = data[key].replace('http://117.102.64.238:1212/assets/maskapai', ASSET_BASE_URL);
-        } 
-        // If the value is an object, recursively update its logo URLs
-        else if (typeof data[key] === 'object') {
+        if (typeof data[key] === 'string') {
+          data[key] = data[key].replace(/http:\/\/117\.102\.64\.238:1212\/assets\/maskapai/g, ASSET_BASE_URL);
+        } else if (typeof data[key] === 'object') {
           data[key] = updateLogoURLs(data[key]);
         }
       }

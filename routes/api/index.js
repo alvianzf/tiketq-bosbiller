@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
 
-// Route imports
+/**
+ * Route imports
+ */
 const routes = {
   airports: require('./airports'),
   airlines: require('./airlines'),
@@ -14,16 +16,19 @@ const routes = {
   payment: require('./payment'),
   bookingData: require('./booking-data'),
   users: require('./users'),
-  'search-airport': require('./search-airport'),
   'create-midtrans-token': require('./midtrans')
 };
 
-// Route configurations
+/**
+ * Route configurations
+ */
 Object.entries(routes).forEach(([key, value]) => {
   router.use(`/${key}`, value);
 });
 
-// Root endpoint
+/**
+ * Root endpoint
+ */
 router.get('/', (req, res, next) => {
   try {
     res.json({

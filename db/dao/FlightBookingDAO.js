@@ -2,7 +2,8 @@ const FlightBooking = require('../models/FlightBooking');
 const moment = require('moment');
 
 class FlightBookingDAO {
-  async createBooking({ bookingCode, nominal, origin, destination, departureDate, mobile_number, name }) {
+  async createBooking(data) {
+    const { bookingCode, nominal, origin, destination, departureDate, mobile_number, name } = data;
     const newBooking = new FlightBooking({
       bookingCode,
       nominal,
@@ -17,37 +18,37 @@ class FlightBookingDAO {
   }
 
   async findAllBookings() {
-    return await FlightBooking.find();
+    return await FlightBooking.find().exec();
   }
 
   async findBookingById(id) {
-    return await FlightBooking.findById(id);
+    return await FlightBooking.findById(id).exec();
   }
 
   async updateBookingById(id, updateData) {
-    return await FlightBooking.findByIdAndUpdate(id, updateData, { new: true });
+    return await FlightBooking.findByIdAndUpdate(id, updateData, { new: true }).exec();
   }
 
   async deleteBookingById(id) {
-    return await FlightBooking.findByIdAndDelete(id);
+    return await FlightBooking.findByIdAndDelete(id).exec();
   }
 
   async findBookingsByBookNo(book_no) {
-    return await FlightBooking.find({ bookingCode: book_no });
+    return await FlightBooking.find({ bookingCode: book_no }).exec();
   }
 
   async findBookingsByUsername(username) {
     const regex = new RegExp(username, 'i');
-    return await FlightBooking.find({ mobile_number: regex });
+    return await FlightBooking.find({ mobile_number: regex }).exec();
   }
 
   async findBookingsByName(name) {
     const regex = new RegExp(name, 'i');
-    return await FlightBooking.find({ name: regex });
+    return await FlightBooking.find({ name: regex }).exec();
   }
 
   async findBookingsByPaymentStatus(payment_status) {
-    return await FlightBooking.find({ payment_status });
+    return await FlightBooking.find({ payment_status }).exec();
   }
 
   async findBookingsByAirlines(airlines) {
@@ -55,15 +56,15 @@ class FlightBookingDAO {
   }
 
   async findAllBookingsSortedByBookDate() {
-    return await FlightBooking.find().sort({ book_date: 1 });
+    return await FlightBooking.find().sort({ book_date: 1 }).exec();
   }
   
   async findAllBookingsSortedByFlightDate() {
-    return await FlightBooking.find().sort({ departureDate: 1 });
+    return await FlightBooking.find().sort({ departureDate: 1 }).exec();
   }
 
   async updatePaymentStatus(id, payment_status) {
-    return await FlightBooking.findByIdAndUpdate(id, { payment_status }, { new: true });
+    return await FlightBooking.findByIdAndUpdate(id, { payment_status }, { new: true }).exec();
   }
 
   async findBookingsByMonth(month) {
@@ -92,7 +93,7 @@ class FlightBookingDAO {
       { bookingCode },
       { payment_status: true },
       { new: true }
-    );
+    ).exec();
     if (!booking) {
       throw new Error('Booking not found');
     }
@@ -101,11 +102,11 @@ class FlightBookingDAO {
 
   async _findByRegex(field, value) {
     const regex = new RegExp(value, 'i');
-    return await FlightBooking.find({ [field]: regex });
+    return await FlightBooking.find({ [field]: regex }).exec();
   }
 
   async _findByDateRange(startDate, endDate) {
-    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } });
+    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } }).exec();
   }
 }
 

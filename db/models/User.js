@@ -1,44 +1,14 @@
-// db/models/User.js
-/**
- * Importing required modules and utilities.
- */
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-/**
- * Defining the schema for User model.
- * 
- * @type {mongoose.Schema} - The schema definition for User.
- */
 const UserSchema = new mongoose.Schema({
-  /**
-   * Username of the user.
-   * @type {String}
-   * @required
-   * @unique
-   */
-  username: { type: String, required: true, unique: true },
-  /**
-   * Password of the user.
-   * @type {String}
-   * @required
-   */
-  password: { type: String, required: true },
-  /**
-   * Indicates if the user is an administrator.
-   * @type {Boolean}
-   * @default {false}
-   */
-  isAdmin: { type: Boolean, default: false}
-}, {timestamps: true});
+  username: { type: String, required: true, unique: true, trim: true },
+  password: { type: String, required: true, select: false },
+  isAdmin: { type: Boolean, default: false }
+}, { timestamps: true, versionKey: false });
 
-/**
- * Middleware to hash the password before saving the user document.
- * 
- * @param {Function} next - The next middleware function in the application’s request-response cycle.
- */
 UserSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
 
@@ -52,12 +22,6 @@ UserSchema.pre('save', async function(next) {
   }
 });
 
-/**
- * Method to compare a candidate password with the user's password.
- * 
- * @param {String} candidatePassword - The password to compare with the user's password.
- * @returns {Promise<Boolean>} - A promise that resolves to a boolean indicating if the passwords match.
- */
 UserSchema.methods.comparePassword = async function(candidatePassword) {
   try {
     return await bcrypt.compare(candidatePassword, this.password);
@@ -67,11 +31,6 @@ UserSchema.methods.comparePassword = async function(candidatePassword) {
   }
 };
 
-/**
- * Method to generate a JSON Web Token for the user.
- * 
- * @returns {String} - The generated JWT token.
- */
 UserSchema.methods.generateJWT = function() {
   const payload = {
     id: this._id,
@@ -80,7 +39,4 @@ UserSchema.methods.generateJWT = function() {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
 };
 
-/**
- * Exporting the User model.
- */
 module.exports = mongoose.model('User', UserSchema);
