@@ -16,7 +16,8 @@ const routes = {
   payment: require('./payment'),
   bookingData: require('./booking-data'),
   users: require('./users'),
-  'create-midtrans-token': require('./midtrans')
+  'create-midtrans-token': require('./midtrans'),
+  ferry: require('./ferry'),
 };
 
 /**
