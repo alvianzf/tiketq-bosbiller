@@ -1,5 +1,5 @@
 const NodeCache = require("node-cache");
-const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
+const cache = new NodeCache({ stdTTL: 86400, checkperiod: 600 });
 const axios = require("axios");
 require("dotenv").config();
 

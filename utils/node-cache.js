@@ -1,5 +1,5 @@
 const NodeCache = require('node-cache');
-const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
+const cache = new NodeCache({ stdTTL: 86400, checkperiod: 600 });
 require('dotenv').config();
 const FERRY_URL = process.env.FERRY_URL;
 const OAUT2_TOKEN_PATH = `${FERRY_URL}/oauth2/token`;
