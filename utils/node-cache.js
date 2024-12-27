@@ -18,7 +18,7 @@ async function getFerryToken() {
     grant_type: 'password'
   });
 
-  cache.set('ferryToken', response.data, 3600);
+  cache.set('ferryToken', response.data, 86400);
   return response.data;
 }
 

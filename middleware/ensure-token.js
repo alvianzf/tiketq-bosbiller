@@ -18,7 +18,7 @@ async function ensureToken(req, res, next) {
         password: FERRY_PASSWORD,
       });
 
-      cache.set("ferryToken", response.data, 3600);
+      cache.set("ferryToken", response.data, 86400);
       req.token = response.data;
       next();
     } catch (error) {
