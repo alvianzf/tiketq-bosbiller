@@ -1,5 +1,12 @@
 const NodeCache = require("node-cache");
 const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
+const axios = require("axios");
+require("dotenv").config();
+
+const FERRY_URL = process.env.FERRY_URL;
+const FERRY_USERNAME = process.env.FERRY_USERNAME;
+const FERRY_PASSWORD = process.env.FERRY_PASSWORD;
+OAUT2_TOKEN_PATH = `${FERRY_URL}/oauth2/token`;
 
 async function ensureToken(req, res, next) {
   const token = cache.get("ferryToken");
