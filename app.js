@@ -10,6 +10,7 @@ const protectedRoutes = require('./routes/protectedRoutes');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const swaggerDocument = YAML.load('./swagger.yaml');
+const getFerryToken = require('./utils/node-cache');
 
 const app = express();
 
@@ -36,6 +37,9 @@ connectDB();
 const seedAdmin = require('./db/seeds/seedAdmin');
 const User = require('./db/models/User');
 seedAdmin();
+
+// Get Ferry Token
+getFerryToken();
 
 // Use routes
 app.use('/api', routes);
