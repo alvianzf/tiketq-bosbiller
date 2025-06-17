@@ -6,6 +6,8 @@ const username = process.env.API_KEY;
 const password = process.env.SECRET_KEY;
 const BASE_URL = process.env.BASE_URL;
 
+const FERRY_URL = process.env.FERRY_URL;
+
 // Base64 encode the credentials for Basic Authentication
 const auth = Buffer.from(`${username}:${password}`).toString('base64');
 

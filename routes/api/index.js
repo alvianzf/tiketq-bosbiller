@@ -17,7 +17,7 @@ const routes = {
   bookingData: require('./booking-data'),
   users: require('./users'),
   'create-midtrans-token': require('./midtrans'),
-  ferry: require('./ferry'),
+  // ferry: require('./ferry'),
 };
 
 /**

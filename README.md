@@ -20,11 +20,13 @@ This document provides a detailed description of the APIs available in our syste
 This endpoint returns a list of all airlines.
 
 **Request:**
+
 ```http
 GET /airlines
 ```
 
 **Response:**
+
 ```json
 {
     "rc": "00",
@@ -46,11 +48,13 @@ GET /airlines
 This endpoint returns a list of all airports.
 
 **Request:**
+
 ```http
 GET /airports
 ```
 
 **Response:**
+
 ```json
 {
     "rc": "00",
@@ -74,11 +78,27 @@ GET /airports
 This endpoint allows you to search for flights.
 
 **Request:**
+
 ```http
 POST /search
 ```
 
+**Body**
+
+```json
+{
+  "departure": "CGK", // IATA code of departure airport (e.g., CGK for Soekarno-Hatta)
+  "arrival": "SIN", // IATA code of arrival airport (e.g., SIN for Changi)
+  "departureDate": "2025-07-01", // Date of departure in YYYY-MM-DD format
+  "returnDate": "2025-07-10", // Date of return (for round trip), optional for one-way
+  "adult": 1, // Number of adult passengers (age 12+)
+  "child": 0, // Number of children (age 2–11)
+  "infant": 0 // Number of infants (under 2 years)
+}
+```
+
 **Response:**
+
 ```json
 {
   "rc": "00",
@@ -114,11 +134,21 @@ POST /search
 This endpoint allows you to book flights.
 
 **Request:**
+
 ```http
 POST /book
 ```
 
+**Body**
+
+```json
+{
+  "bookingCode": "RUEHS"
+}
+```
+
 **Response:**
+
 ```json
 {
   "rc": "00",
@@ -136,9 +166,11 @@ POST /book
 This endpoint allows you to get booking information.
 
 **Request:**
-```http
+
+````http
 GET /book-info/:code
-```
+``
+`
 
 **Response:**
 ```json
@@ -149,7 +181,7 @@ GET /book-info/:code
     ...
   }
 }
-```
+````
 
 ---
 
@@ -158,11 +190,13 @@ GET /book-info/:code
 This endpoint allows you to search for an airport by code or name.
 
 **Request:**
+
 ```http
 GET /search-airport/:query
 ```
 
 **Response:**
+
 ```json
 {
   "data": [
