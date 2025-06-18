@@ -140,10 +140,29 @@ POST /book
 ```
 
 **Body**
-
 ```json
 {
-  "bookingCode": "RUEHS"
+  "searchId": "e8a2956a62afa415d8d9c1f307287ef7ba69b0a6",
+  "adult": "1",
+  "child": "0",
+  "infant": "0",
+  "buyer": {
+    "telp_number": "123123",
+    "mobile_number": "123123",
+    "email": "12323!@sds.com"
+  },
+  "passengers": {
+    "adults": [
+      {
+        "title": "Mr",
+        "first_name": "12",
+        "last_name": "123",
+        "date_of_birth": "06/18/2025"
+      }
+    ],
+    "childrens": [],
+    "infants": []
+  }
 }
 ```
 
@@ -151,11 +170,7 @@ POST /book
 
 ```json
 {
-  "rc": "00",
-  "msg": "Sukses",
-  "data": {
-    ...
-  }
+  "bookingCode": "RUEHS"
 }
 ```
 
@@ -169,9 +184,15 @@ This endpoint allows you to get booking information.
 
 ````http
 GET /book-info/:code
-``
-`
+````
 
+**Body**
+
+```json
+{
+  "bookingCode": "RUEHS"
+}
+```
 **Response:**
 ```json
 {
