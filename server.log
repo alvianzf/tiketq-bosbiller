@@ -1,0 +1,7 @@
+
+> tiketq-bosbiller@0.0.0 start
+> node ./bin/www
+
+Failed to initialize Ferry Token: 
+MongoDB connected
+Admin user seeding failed: Illegal arguments: undefined, number

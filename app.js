@@ -15,7 +15,9 @@ const getFerryToken = require('./utils/node-cache');
 const app = express();
 
 // Enable CORS
-app.use(cors('*'));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+}));
 
 // Middleware
 app.use(logger('dev'));
@@ -39,7 +41,9 @@ const User = require('./db/models/User');
 seedAdmin();
 
 // Get Ferry Token
-getFerryToken();
+getFerryToken().catch(err => {
+  console.error('Failed to initialize Ferry Token:', err.message);
+});
 
 // Use routes
 app.use('/api', routes);
