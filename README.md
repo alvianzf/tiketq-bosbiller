@@ -4,10 +4,10 @@ Welcome to the **TiketQ Bosbiller API**. This service handles flight searches, b
 
 ## 🚀 Features
 
-- **Flight Search & Booking**: Real-time flight availability and booking.
-- **Airport & Airline Data**: Comprehensive database of airports and airlines.
-- **User Management**: Authentication and user profile management.
-- **Payments**: Integration with Midtrans for secure payments.
+- **Flight Search & Booking**: Real-time flight availability, booking, and payment.
+- **Ferry Service**: Sindo Ferry API integration for real-time search and booking.
+- **User Management**: Authentication and account management consolidated under Auth.
+- **Payments**: Integrated Midtrans and direct flight payment services.
 - **Swagger UI**: Interactive API documentation.
 
 ## 🛠️ Prerequisites
@@ -88,31 +88,22 @@ Detailed API documentation is available in the following formats:
 ### Flight API (`/api/flight`)
 
 1.  [Get Airlines](#get-airlines) - `GET /api/flight/airlines`
-2.  [Get Airports](#get-airports) - `GET /api/flight/airports`
-3.  [Search Flights](#post-search-flights) - `POST /api/flight/search`
-4.  [Book Flights](#post-book-flights) - `POST /api/flight/book`
-5.  [Get Booking Info](#get-booking-info) - `GET /api/flight/book-info/:code`
-6.  [Search Airport](#get-search-airport) - `GET /api/flight/search-airport/:query`
-7.  [List Bookings](#list-bookings) - `GET /api/flight/bookings` (Protected)
+2.  [Search Flights](#post-search-flights) - `POST /api/flight/search`
+3.  [List Bookings](#list-bookings) - `GET /api/flight/bookings` (Protected)
+4.  [Process Payment](#payment) - `POST /api/flight/payment` (Protected)
+5.  [Get Midtrans Token](#midtrans-token) - `POST /api/flight/payment/midtrans` (Protected)
 
 ### Auth API (`/api/auth`)
 
-1.  [Login](#login) - `POST /api/auth`
+1.  [Login](#login) - `POST /api/auth/login`
 2.  [Register](#register) - `POST /api/auth/register`
-3.  [Get Current User](#get-current-user) - `GET /api/auth/me` (Protected)
-4.  [Admin Login](#admin-login) - `POST /api/auth/admin-login`
-5.  [User List](#user-list) - `GET /api/auth/users` (Protected)
-
-### Payment API (`/api/payment`)
-
-1.  [Process Payment](#payment) - `POST /api/payment`
-2.  [Get Token](#midtrans-token) - `POST /api/payment/midtrans`
+3.  [User List](#user-list) - `GET /api/auth/users` (Protected)
 
 ### Ferry API (`/api/ferry`)
 
-1.  [Get Ports](#ports) - `GET /api/ferry/ports` (Protected)
-2.  [Search Trips](#search-trips) - `POST /api/ferry/trips/search` (Protected)
-3.  [Reserve Booking](#reserve-booking) - `POST /api/ferry/booking/reserve` (Protected)
+1.  [Available Sectors](#sectors) - `GET /api/ferry/master/sectors` (Protected)
+2.  [Search Trips](#search-trips) - `GET /api/ferry/trips/search` (Protected)
+3.  [Reserve Booking](#reserve-booking) - `POST /api/ferry/booking` (Protected)
 
 ---
 
@@ -146,11 +137,9 @@ POST /api/flight/search
 ## 📂 Project Structure
 
 - `bin/`: Server entry point.
-- `routes/api/`: Domain-based route definitions (flight, auth, payment).
-- `db/`: Database configuration and seeds (Prisma/PostgreSQL).
-- `middleware/`: Custom Express middleware.
-- `services/`: Business logic.
-- `utils/`: Utility functions.
+- `routes/api/flight/`: Consolidated flight routes (search, book, payment, bookings).
+- `routes/api/ferry/`: Restructured ferry routes (agent, master, trips, booking).
+- `routes/api/auth/`: Consolidated authentication and user routes.
 
 ## 🤝 Contributing
 

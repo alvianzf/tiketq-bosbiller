@@ -12,10 +12,9 @@ The API is built using Node.js and Express, with PostgreSQL as the primary relat
 
 ### Domain Structure
 
-- **Flight Domain** (`/api/flight`): Handles airports, airlines, flight search, and booking management.
-- **Auth Domain** (`/api/auth`): Handles user registration, login, and user profile management.
-- **Payment Domain** (`/api/payment`): Handles payment processing and Midtrans integration.
-- **Ferry Domain** (`/api/ferry`): Placeholder for upcoming ferry service integration.
+- **Flight Domain** (`/api/flight`): Handles airports, airlines, flight search, booking management, and flight payments (including Midtrans).
+- **Auth Domain** (`/api/auth`): Handles user registration, login, and user profile/account management.
+- **Ferry Domain** (`/api/ferry`): Handles ferry port/sector listing, trip search, and booking management.
 
 ## Core Components
 
@@ -33,30 +32,27 @@ The API is built using Node.js and Express, with PostgreSQL as the primary relat
 - `POST /api/flight/book`: Create a new flight booking.
 - `GET /api/flight/book-info/:code`: Get booking details by code.
 - `GET /api/flight/search-airport/:query`: Search airports by name/code.
-- `GET /api/flight/bookings`: List all bookings (Requires Auth).
+- `GET /api/flight/bookings`: List all flight bookings (Requires Auth).
+- `GET /api/flight/booking-data`: List all flight booking raw records (Requires Auth).
+- `POST /api/flight/payment`: Process payment for a flight booking (Requires Auth).
+- `POST /api/flight/payment/midtrans`: Generate Midtrans payment token for flight (Requires Auth).
 
 ### Auth API
 
-- `POST /api/auth`: User login.
+- `POST /api/auth/login`: User login.
 - `POST /api/auth/register`: User registration.
-- `POST /api/auth/admin-login` - Admin login endpoint
-- `GET /api/auth/me` - Get current user profile (Protected)
-- `POST /api/auth/admin-register`: Admin registration (Requires Auth).
+- `GET /api/auth/me`: Get current user profile (Protected).
 - `GET /api/auth/users`: List all users (Requires Auth).
+- `GET /api/auth/users/:id`: Get user by ID (Requires Auth).
 
-### Payment API
-
-- `POST /api/payment`: Process payment for a booking.
-- `POST /api/payment/midtrans`: Generate Midtrans payment token.
-
-### Ferry API
-
-- `GET /api/ferry/ports`: List ports (Requires Auth).
-- `GET /api/ferry/sectors`: List sectors (Requires Auth).
-- `POST /api/ferry/trips/search`: Search ferry trips (Requires Auth).
-- `POST /api/ferry/booking/reserve`: Reserve a booking (Requires Auth).
-- `POST /api/ferry/booking/confirm`: Confirm a booking (Requires Auth).
-- `GET /api/ferry/booking/:id`: Get booking by ID (Requires Auth).
+- `GET /api/ferry/agent/agents`: List ferry agents (Requires Auth).
+- `GET /api/ferry/master/sectors`: List available ferry sectors (Requires Auth).
+- `GET /api/ferry/master/routes`: List ferry routes (Requires Auth).
+- `GET /api/ferry/trips/search`: Search available ferry trips (Requires Auth).
+- `POST /api/ferry/booking`: Reserve a ferry booking (Requires Auth).
+- `POST /api/ferry/booking/:id/details`: Add passenger details to booking (Requires Auth).
+- `POST /api/ferry/booking/submit`: Submit a ferry booking (Requires Auth).
+- `GET /api/ferry/booking/:id`: Get ferry booking details (Requires Auth).
 
 ## Data Models (Prisma)
 

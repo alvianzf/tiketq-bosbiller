@@ -8,8 +8,8 @@ const createError = require("http-errors");
 const domains = {
   flight: require("./flight"),
   auth: require("./auth"),
-  payment: require("./payment"),
   ferry: require("./ferry"),
+  history: require("./history"),
 };
 
 /**

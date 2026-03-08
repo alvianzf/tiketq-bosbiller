@@ -10,6 +10,11 @@ class FlightBookingDAO {
       departureDate,
       mobile_number,
       name,
+      email,
+      passengers,
+      basePrice,
+      serviceFee,
+      totalSales,
     } = data;
     return await prisma.flightBooking.create({
       data: {
@@ -20,8 +25,42 @@ class FlightBookingDAO {
         departureDate,
         mobile_number,
         name,
+        email,
+        basePrice,
+        serviceFee,
+        totalSales,
         book_date: new Date(),
+        passengers: passengers
+          ? {
+              create: passengers.map((p) => ({
+                title: p.title,
+                firstName: p.firstName,
+                lastName: p.lastName,
+                passportNumber: p.passportNumber,
+                nationality: p.nationality,
+                dateOfBirth: p.dateOfBirth ? new Date(p.dateOfBirth) : null,
+              })),
+            }
+          : undefined,
       },
+      include: {
+        passengers: true,
+      },
+    });
+  }
+
+  async findBookingsByEmail(email) {
+    return await prisma.flightBooking.findMany({
+      where: {
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
+      },
+      include: {
+        passengers: true,
+      },
+      orderBy: { book_date: "desc" },
     });
   }
 

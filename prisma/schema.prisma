@@ -23,17 +23,79 @@ model User {
 
 model FlightBooking {
   id             Int      @id @default(autoincrement())
-  bookingCode    String?
+  bookingCode    String?  @unique
   nominal        String?
+  basePrice      Decimal? @default(0)
+  serviceFee     Decimal? @default(0)
+  totalSales     Decimal? @default(0)
   departureDate  String?
   origin         String?
   destination    String?
+  email          String?
   mobile_number  String?
   name           String?
   book_date      DateTime @default(now())
   payment_status Boolean  @default(false)
+  passengers     Passenger[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@map("flight_bookings")
+}
+
+model FerryBooking {
+  id             Int      @id @default(autoincrement())
+  bookingNo      String?  @unique
+  nominal        String?
+  basePrice      Decimal? @default(0)
+  serviceFee     Decimal? @default(0)
+  totalSales     Decimal? @default(0)
+  departureDate  DateTime?
+  returnDate     DateTime?
+  originId       Int?
+  destinationId  Int?
+  origin         Terminal? @relation("OriginTerminal", fields: [originId], references: [id])
+  destination    Terminal? @relation("DestinationTerminal", fields: [destinationId], references: [id])
+  email          String?
+  mobile_number  String?
+  status         String?   @default("PENDING")
+  payment_status Boolean  @default(false)
+  passengers     Passenger[]
+  book_date      DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("ferry_bookings")
+}
+
+model Passenger {
+  id              Int      @id @default(autoincrement())
+  title           String?
+  firstName       String
+  lastName        String
+  passportNumber  String?
+  nationality     String?
+  dateOfBirth     DateTime?
+  flightBookingId Int?
+  ferryBookingId  Int?
+  flightBooking   FlightBooking? @relation(fields: [flightBookingId], references: [id])
+  ferryBooking    FerryBooking?  @relation(fields: [ferryBookingId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("passengers")
+}
+
+model Terminal {
+  id                  Int      @id @default(autoincrement())
+  code                String   @unique
+  name                String
+  city                String?
+  country             String?
+  originFerryBookings      FerryBooking[] @relation("OriginTerminal")
+  destinationFerryBookings FerryBooking[] @relation("DestinationTerminal")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("terminals")
 }
