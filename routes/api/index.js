@@ -1,43 +1,41 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const createError = require('http-errors');
+const createError = require("http-errors");
 
 /**
- * Route imports
+ * Domain-based routes
  */
-const routes = {
-  airports: require('./airports'),
-  airlines: require('./airlines'),
-  search: require('./search'),
-  book: require('./book'),
-  'book-info': require('./bookinfo'),
-  searchAirport: require('./search-airport'),
-  auth: require('./auth'),
-  payment: require('./payment'),
-  bookingData: require('./booking-data'),
-  users: require('./users'),
-  'create-midtrans-token': require('./midtrans'),
-  // ferry: require('./ferry'),
+const domains = {
+  flight: require("./flight"),
+  auth: require("./auth"),
+  payment: require("./payment"),
+  ferry: require("./ferry"),
 };
 
 /**
- * Route configurations
+ * Domain configurations
  */
-Object.entries(routes).forEach(([key, value]) => {
+Object.entries(domains).forEach(([key, value]) => {
   router.use(`/${key}`, value);
 });
 
 /**
  * Root endpoint
  */
-router.get('/', (req, res, next) => {
+router.get("/", (req, res, next) => {
   try {
     res.json({
-      message: "Welcome to the API! Explore the available endpoints for a seamless travel experience.",
-      error: null
+      message:
+        "Welcome to the API! Explore the available domains: flight, auth, payment, ferry.",
+      error: null,
     });
   } catch (err) {
-    next(createError(500, err.message || 'An unexpected error occurred. Please try again later.'));
+    next(
+      createError(
+        500,
+        err.message || "An unexpected error occurred. Please try again later.",
+      ),
+    );
   }
 });
 
