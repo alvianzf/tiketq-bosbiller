@@ -15,9 +15,24 @@ const getFerryToken = require("./utils/node-cache");
 const app = express();
 
 // Enable CORS
+const allowedOrigins = [
+  "http://117.102.64.238:1212",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://tiketq.com",
+  "https://www.tiketq.com",
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   }),
 );
 
