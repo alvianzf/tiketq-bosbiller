@@ -13,19 +13,22 @@ Welcome to the **TiketQ Bosbiller API**. This service handles flight searches, b
 ## 🛠️ Prerequisites
 
 Before you begin, ensure you have met the following requirements:
+
 - **Node.js**: v14.x or higher
-- **MongoDB**: Local or remote instance
+- **PostgreSQL**: v12 or higher
 - **Redis** (Optional): For caching (if configured)
 
 ## 📦 Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone <repository-url>
    cd tiketq-bosbiller
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
@@ -36,20 +39,24 @@ Before you begin, ensure you have met the following requirements:
    cp .env.example .env
    ```
    Update `.env` with your credentials:
-   - `DB_NAME`: Your MongoDB database name.
+   - `DATABASE_URL`: Your PostgreSQL connection string (e.g., `postgresql://user:password@localhost:5432/db_name`).
    - `MIDTRANS_SERVER_KEY` / `MIDTRANS_CLIENT_KEY`: Your payment gateway keys.
    - `CORS_ORIGIN`: Allowed origins (e.g., `http://localhost:5173`).
 
 ## 🏃‍♂️ Usage
 
 ### Development Mode
+
 Run the server with hot-reload (if `nodemon` is available) or standard node:
+
 ```bash
 npm start
 ```
+
 The server defaults to port `3000`.
 
 ### API Documentation
+
 Interactive API documentation is available via Swagger UI.
 Once the server is running, visit:
 **[http://localhost:3000/api-docs](http://localhost:3000/api-docs)**
@@ -58,7 +65,10 @@ Once the server is running, visit:
 
 ## 📚 API Reference
 
-Below is a detailed description of the core APIs available in our system.
+Detailed API documentation is available in the following formats:
+
+- **Swagger UI**: [http://localhost:3000/api-docs](http://localhost:3000/api-docs) (when server is running)
+- **API Specifications**: [API_SPECS.md](./API_SPECS.md)
 
 ### List of APIs
 
@@ -73,12 +83,10 @@ Below is a detailed description of the core APIs available in our system.
 
 ### `GET` Airlines
 
-This endpoint returns a list of all airlines.
-
 **Request:**
 
 ```http
-GET /airlines
+GET /api/airlines
 ```
 
 **Response:**
@@ -101,12 +109,10 @@ GET /airlines
 
 ### `GET` Airports
 
-This endpoint returns a list of all airports.
-
 **Request:**
 
 ```http
-GET /airports
+GET /api/airports
 ```
 
 **Response:**
@@ -131,25 +137,23 @@ GET /airports
 
 ### `POST` Search Flights
 
-This endpoint allows you to search for flights.
-
 **Request:**
 
 ```http
-POST /search
+POST /api/search
 ```
 
 **Body**
 
 ```json
 {
-  "departure": "CGK", // IATA code of departure airport (e.g., CGK for Soekarno-Hatta)
-  "arrival": "SIN", // IATA code of arrival airport (e.g., SIN for Changi)
-  "departureDate": "2025-07-01", // Date of departure in YYYY-MM-DD format
-  "returnDate": "2025-07-10", // Date of return (for round trip), optional for one-way
-  "adult": 1, // Number of adult passengers (age 12+)
-  "child": 0, // Number of children (age 2–11)
-  "infant": 0 // Number of infants (under 2 years)
+  "departure": "CGK",
+  "arrival": "SIN",
+  "departureDate": "2025-07-01",
+  "returnDate": "2025-07-10",
+  "adult": 1,
+  "child": 0,
+  "infant": 0
 }
 ```
 
@@ -160,24 +164,6 @@ POST /search
   "rc": "00",
   "msg": "Sukses",
   "data": [
-    {
-      "classes": [
-        ...
-      ],
-      "title": "...",
-      "isTransit": false,
-      "detailTitle": [
-        ...
-      ],
-      "cityTransit": "",
-      "departureDate": "...",
-      "arrivalDate": "...",
-      "duration": "...",
-      "airlineIcon": "...",
-      "airlineName": "...",
-      "airlineCode": "...",
-      "searchId": "..."
-    },
     ...
   ]
 }
@@ -187,38 +173,19 @@ POST /search
 
 ### `POST` Book Flights
 
-This endpoint allows you to book flights.
-
 **Request:**
 
 ```http
-POST /book
+POST /api/book
 ```
 
 **Body**
+
 ```json
 {
-  "searchId": "e8a2956a62afa415d8d9c1f307287ef7ba69b0a6",
-  "adult": "1",
-  "child": "0",
-  "infant": "0",
-  "buyer": {
-    "telp_number": "123123",
-    "mobile_number": "123123",
-    "email": "12323!@sds.com"
-  },
-  "passengers": {
-    "adults": [
-      {
-        "title": "Mr",
-        "first_name": "12",
-        "last_name": "123",
-        "date_of_birth": "06/18/2025"
-      }
-    ],
-    "childrens": [],
-    "infants": []
-  }
+  "searchId": "...",
+  "buyer": { ... },
+  "passengers": { ... }
 }
 ```
 
@@ -234,29 +201,19 @@ POST /book
 
 ### `GET` Get Booking Information
 
-This endpoint allows you to get booking information.
-
 **Request:**
 
 ```http
-GET /book-info/:code
+GET /api/book-info/:code
 ```
 
-**Body**
-
-```json
-{
-  "bookingCode": "RUEHS"
-}
-```
 **Response:**
+
 ```json
 {
   "rc": "00",
   "msg": "Sukses",
-  "data": {
-    ...
-  }
+  "data": { ... }
 }
 ```
 
@@ -264,26 +221,17 @@ GET /book-info/:code
 
 ### `GET` Search Airport
 
-This endpoint allows you to search for an airport by code or name.
-
 **Request:**
 
 ```http
-GET /search-airport/:query
+GET /api/search-airport/:query
 ```
 
 **Response:**
 
 ```json
 {
-  "data": [
-    {
-      "code": "...",
-      "name": "...",
-      "bandara": "...",
-      "group": "..."
-    }
-  ]
+  "data": [ ... ]
 }
 ```
 

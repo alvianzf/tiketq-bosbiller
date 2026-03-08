@@ -1,0 +1,196 @@
+openapi: 3.0.0
+info:
+  title: TiketQ Bosbiller API
+  description: API for flight searches, bookings, and user management.
+  version: 1.0.0
+servers:
+  - url: /
+    description: Local server
+paths:
+  /api/airlines:
+    get:
+      summary: Get all airlines
+      responses:
+        "200":
+          description: A list of airlines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rc:
+                    type: string
+                  msg:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        airlineCode:
+                          type: string
+                        airlineName:
+                          type: string
+  /api/airports:
+    get:
+      summary: Get all airports
+      responses:
+        "200":
+          description: A list of airports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rc:
+                    type: string
+                  msg:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        bandara:
+                          type: string
+                        group:
+                          type: string
+  /api/search:
+    post:
+      summary: Search for flights
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                departure:
+                  type: string
+                arrival:
+                  type: string
+                departureDate:
+                  type: string
+                returnDate:
+                  type: string
+                adult:
+                  type: integer
+                child:
+                  type: integer
+                infant:
+                  type: integer
+      responses:
+        "200":
+          description: Search results
+  /api/book:
+    post:
+      summary: Book a flight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Booking result
+  /api/book-info/{id}:
+    get:
+      summary: Get booking information by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booking information
+  /api/search-airport/{query}:
+    get:
+      summary: Search for an airport
+      parameters:
+        - name: query
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of matching airports
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: User registered
+  /api/auth:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+  /api/payment:
+    post:
+      summary: Process payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bookingCode:
+                  type: string
+                nominal:
+                  type: number
+      responses:
+        "200":
+          description: Payment processed
+  /api/flight-bookings:
+    get:
+      summary: Get all bookings (Protected)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of bookings
+    post:
+      summary: Create a booking record (Protected)
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Booking created
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
