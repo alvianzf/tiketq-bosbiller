@@ -1,10 +1,8 @@
-const FlightBooking = require('../models/FlightBooking');
-const moment = require('moment');
+const { prisma } = require("../index");
 
 class FlightBookingDAO {
   async createBooking(data) {
-    const { bookingCode, nominal, origin, destination, departureDate, mobile_number, name } = data;
-    const newBooking = new FlightBooking({
+    const {
       bookingCode,
       nominal,
       origin,
@@ -12,101 +10,121 @@ class FlightBookingDAO {
       departureDate,
       mobile_number,
       name,
-      book_date: new Date()
+    } = data;
+    return await prisma.flightBooking.create({
+      data: {
+        bookingCode,
+        nominal,
+        origin,
+        destination,
+        departureDate,
+        mobile_number,
+        name,
+        book_date: new Date(),
+      },
     });
-    return await newBooking.save();
   }
 
   async findAllBookings() {
-    return await FlightBooking.find().exec();
+    return await prisma.flightBooking.findMany();
   }
 
   async findBookingById(id) {
-    return await FlightBooking.findById(id).exec();
+    return await prisma.flightBooking.findUnique({
+      where: { id: parseInt(id) },
+    });
   }
 
   async updateBookingById(id, updateData) {
-    return await FlightBooking.findByIdAndUpdate(id, updateData, { new: true }).exec();
+    return await prisma.flightBooking.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+    });
   }
 
   async deleteBookingById(id) {
-    return await FlightBooking.findByIdAndDelete(id).exec();
+    return await prisma.flightBooking.delete({
+      where: { id: parseInt(id) },
+    });
   }
 
   async findBookingsByBookNo(book_no) {
-    return await FlightBooking.find({ bookingCode: book_no }).exec();
+    return await prisma.flightBooking.findMany({
+      where: {
+        bookingCode: book_no,
+      },
+    });
   }
 
   async findBookingsByUsername(username) {
-    const regex = new RegExp(username, 'i');
-    return await FlightBooking.find({ mobile_number: regex }).exec();
+    return await prisma.flightBooking.findMany({
+      where: {
+        mobile_number: {
+          contains: username,
+          mode: "insensitive",
+        },
+      },
+    });
   }
 
   async findBookingsByName(name) {
-    const regex = new RegExp(name, 'i');
-    return await FlightBooking.find({ name: regex }).exec();
+    return await prisma.flightBooking.findMany({
+      where: {
+        name: {
+          contains: name,
+          mode: "insensitive",
+        },
+      },
+    });
   }
 
   async findBookingsByPaymentStatus(payment_status) {
-    return await FlightBooking.find({ payment_status }).exec();
-  }
-
-  async findBookingsByAirlines(airlines) {
-    return await this._findByRegex('flight_carrier', airlines);
+    return await prisma.flightBooking.findMany({
+      where: { payment_status },
+    });
   }
 
   async findAllBookingsSortedByBookDate() {
-    return await FlightBooking.find().sort({ book_date: 1 }).exec();
+    return await prisma.flightBooking.findMany({
+      orderBy: { book_date: "asc" },
+    });
   }
-  
+
   async findAllBookingsSortedByFlightDate() {
-    return await FlightBooking.find().sort({ departureDate: 1 }).exec();
+    return await prisma.flightBooking.findMany({
+      orderBy: { departureDate: "asc" },
+    });
   }
 
   async updatePaymentStatus(id, payment_status) {
-    return await FlightBooking.findByIdAndUpdate(id, { payment_status }, { new: true }).exec();
-  }
-
-  async findBookingsByMonth(month) {
-    return await this._findByDateRange(
-      moment().month(month - 1).startOf('month').toDate(),
-      moment().month(month - 1).endOf('month').toDate()
-    );
-  }
-
-  async findBookingsThisMonth() {
-    return await this._findByDateRange(
-      moment().startOf('month').toDate(),
-      moment().endOf('month').toDate()
-    );
-  }
-
-  async findBookingsLastMonth() {
-    return await this._findByDateRange(
-      moment().subtract(1, 'months').startOf('month').toDate(),
-      moment().subtract(1, 'months').endOf('month').toDate()
-    );
+    return await prisma.flightBooking.update({
+      where: { id: parseInt(id) },
+      data: { payment_status },
+    });
   }
 
   async findBookingByCodeAndUpdatePaymentStatus(bookingCode) {
-    const booking = await FlightBooking.findOneAndUpdate(
-      { bookingCode },
-      { payment_status: true },
-      { new: true }
-    ).exec();
+    const booking = await prisma.flightBooking.findFirst({
+      where: { bookingCode },
+    });
     if (!booking) {
-      throw new Error('Booking not found');
+      throw new Error("Booking not found");
     }
-    return booking;
-  }
-
-  async _findByRegex(field, value) {
-    const regex = new RegExp(value, 'i');
-    return await FlightBooking.find({ [field]: regex }).exec();
+    return await prisma.flightBooking.update({
+      where: { id: booking.id },
+      data: { payment_status: true },
+    });
   }
 
   async _findByDateRange(startDate, endDate) {
-    return await FlightBooking.find({ book_date: { $gte: startDate, $lte: endDate } }).exec();
+    return await prisma.flightBooking.findMany({
+      where: {
+        book_date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
   }
 }
 
