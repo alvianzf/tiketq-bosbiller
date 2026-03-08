@@ -1,6 +1,6 @@
 const express = require("express");
 const axios = require("axios");
-const ensureToken = require("../../middleware/ensure-token");
+const ensureToken = require("../../../middleware/ensure-token");
 require("dotenv").config();
 
 const router = express.Router();
@@ -17,7 +17,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 const makeRequest = async (method, url, data = {}, token) => {
@@ -48,7 +48,12 @@ const validateFields = (fields, body, res) => {
 router.get("/ports", ensureToken, async (req, res, next) => {
   const { id, name, countryId, countryName } = req.body;
   try {
-    const response = await makeRequest("get", "/ports", { id, name, countryId, countryName }, req.token);
+    const response = await makeRequest(
+      "get",
+      "/ports",
+      { id, name, countryId, countryName },
+      req.token,
+    );
     res.json(response.data);
   } catch (error) {
     next(error);
@@ -58,7 +63,12 @@ router.get("/ports", ensureToken, async (req, res, next) => {
 router.get("/sectors", ensureToken, async (req, res, next) => {
   const { id, name, portOrigin, portDestination } = req.body;
   try {
-    const response = await makeRequest("get", "/sectors", { id, name, portOrigin, portDestination }, req.token);
+    const response = await makeRequest(
+      "get",
+      "/sectors",
+      { id, name, portOrigin, portDestination },
+      req.token,
+    );
     res.json(response.data);
   } catch (error) {
     next(error);
@@ -67,10 +77,19 @@ router.get("/sectors", ensureToken, async (req, res, next) => {
 
 router.post("/trips/search", ensureToken, async (req, res, next) => {
   try {
-    const requiredFields = ["departDate", "departPortOriginId", "departPortDestinationId"];
+    const requiredFields = [
+      "departDate",
+      "departPortOriginId",
+      "departPortDestinationId",
+    ];
     if (!validateFields(requiredFields, req.body, res)) return;
 
-    const response = await makeRequest("post", "/trips/search", req.body, req.token);
+    const response = await makeRequest(
+      "post",
+      "/trips/search",
+      req.body,
+      req.token,
+    );
     res.json(response.data);
   } catch (error) {
     next(error);
@@ -82,7 +101,12 @@ router.post("/booking/reserve", ensureToken, async (req, res, next) => {
   if (!validateFields(requiredFields, req.body, res)) return;
 
   try {
-    const response = await makeRequest("post", "/trips/book", req.body, req.token);
+    const response = await makeRequest(
+      "post",
+      "/trips/book",
+      req.body,
+      req.token,
+    );
     res.json(response.data);
   } catch (error) {
     next(error);
@@ -94,7 +118,12 @@ router.post("/booking/confirm", ensureToken, async (req, res, next) => {
   if (!validateFields(requiredFields, req.body, res)) return;
 
   try {
-    const response = await makeRequest("post", "/booking/confirm", req.body, req.token);
+    const response = await makeRequest(
+      "post",
+      "/booking/confirm",
+      req.body,
+      req.token,
+    );
     res.json(response.data);
   } catch (error) {
     next(error);
@@ -106,7 +135,12 @@ router.post("/booking/cancel", ensureToken, async (req, res, next) => {
   if (!validateFields(requiredFields, req.body, res)) return;
 
   try {
-    const response = await makeRequest("post", "/booking/cancel", req.body, req.token);
+    const response = await makeRequest(
+      "post",
+      "/booking/cancel",
+      req.body,
+      req.token,
+    );
     res.json(response.data);
   } catch (error) {
     next(error);
