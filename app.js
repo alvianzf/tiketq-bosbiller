@@ -47,7 +47,6 @@ connectDB();
 
 // Required for seed
 const seedAdmin = require("./db/seeds/seedAdmin");
-const User = require("./db/models/User");
 seedAdmin();
 
 // Get Ferry Token
