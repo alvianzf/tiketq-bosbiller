@@ -63,6 +63,21 @@ Once the server is running, visit:
 
 ---
 
+## 🔐 Authentication
+
+All protected routes require a JSON Web Token (JWT). To authenticate, include the token in the `Authorization` header:
+
+```http
+Authorization: Bearer <your_jwt_token>
+```
+
+You can obtain a token by logging in via:
+
+- `POST /api/auth` (User)
+- `POST /api/auth/admin-login` (Admin)
+
+---
+
 ## 📚 API Reference
 
 Detailed API documentation is available in the following formats:
