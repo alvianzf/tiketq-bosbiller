@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const ensureToken = require("../../../middleware/ensure-token");
+const ensureToken = require("../../../../middleware/ensure-token");
 const { makeRequest } = require("../utils");
 
 router.get("/vouchers", ensureToken, async (req, res, next) => {

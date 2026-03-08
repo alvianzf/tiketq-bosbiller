@@ -1,6 +1,6 @@
 const express = require("express");
-const apiService = require("../../../services/apiService");
-const FlightBookingDAO = require("../../../db/dao/FlightBookingDAO");
+const apiService = require("../../../../services/apiService");
+const FlightBookingDAO = require("../../../../db/dao/FlightBookingDAO");
 const router = express.Router();
 
 router.post("/", async (req, res, next) => {

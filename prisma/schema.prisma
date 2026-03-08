@@ -21,6 +21,33 @@ model User {
   @@map("users")
 }
 
+enum ServiceType {
+  FLIGHT
+  FERRY
+}
+
+model Transaction {
+  id              Int         @id @default(autoincrement())
+  serviceType     ServiceType
+  bookingCode     String?     @unique
+  email           String?
+  basePrice       Decimal?    @default(0)
+  serviceFee      Decimal?    @default(0)
+  totalSales      Decimal?    @default(0)
+  payment_status  Boolean     @default(false)
+  status          String?     @default("PENDING")
+  
+  flightBooking   FlightBooking? @relation(fields: [flightBookingId], references: [id])
+  flightBookingId Int?           @unique
+  ferryBooking    FerryBooking?  @relation(fields: [ferryBookingId], references: [id])
+  ferryBookingId  Int?           @unique
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("transactions")
+}
+
 model FlightBooking {
   id             Int      @id @default(autoincrement())
   bookingCode    String?  @unique
@@ -36,6 +63,7 @@ model FlightBooking {
   name           String?
   book_date      DateTime @default(now())
   payment_status Boolean  @default(false)
+  transaction    Transaction?
   passengers     Passenger[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -60,6 +88,7 @@ model FerryBooking {
   mobile_number  String?
   status         String?   @default("PENDING")
   payment_status Boolean  @default(false)
+  transaction    Transaction?
   passengers     Passenger[]
   book_date      DateTime @default(now())
   createdAt      DateTime @default(now())

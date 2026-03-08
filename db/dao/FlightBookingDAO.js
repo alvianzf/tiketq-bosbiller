@@ -30,6 +30,18 @@ class FlightBookingDAO {
         serviceFee,
         totalSales,
         book_date: new Date(),
+        transaction: {
+          create: {
+            serviceType: "FLIGHT",
+            bookingCode,
+            email,
+            basePrice,
+            serviceFee,
+            totalSales,
+            status: "PENDING",
+            payment_status: false,
+          },
+        },
         passengers: passengers
           ? {
               create: passengers.map((p) => ({
@@ -45,6 +57,7 @@ class FlightBookingDAO {
       },
       include: {
         passengers: true,
+        transaction: true,
       },
     });
   }

@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const ensureToken = require("../../../middleware/ensure-token");
+const ensureToken = require("../../../../middleware/ensure-token");
 const { makeRequest, validateFields } = require("../utils");
-const FerryBookingDAO = require("../../../db/dao/FerryBookingDAO");
+const FerryBookingDAO = require("../../../../db/dao/FerryBookingDAO");
 
 router.post("/", ensureToken, async (req, res, next) => {
   try {

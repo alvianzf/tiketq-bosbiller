@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
-const ensureToken = require("../../../middleware/ensure-token");
+const ensureToken = require("../../../../middleware/ensure-token");
 const { validateFields } = require("../utils");
 
 router.get("/search", ensureToken, async (req, res, next) => {

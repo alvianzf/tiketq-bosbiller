@@ -31,6 +31,18 @@ class FerryBookingDAO {
         email,
         mobile_number,
         status: "PENDING",
+        transaction: {
+          create: {
+            serviceType: "FERRY",
+            bookingCode: bookingNo,
+            email,
+            basePrice,
+            serviceFee,
+            totalSales,
+            status: "PENDING",
+            payment_status: false,
+          },
+        },
         passengers: {
           create: passengers.map((p) => ({
             title: p.title,
@@ -46,6 +58,7 @@ class FerryBookingDAO {
         passengers: true,
         origin: true,
         destination: true,
+        transaction: true,
       },
     });
   }

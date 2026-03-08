@@ -1,6 +1,6 @@
 const express = require("express");
-const apiService = require("../../../services/apiService");
-const FlightBookingDAO = require("../../../db/dao/FlightBookingDAO");
+const apiService = require("../../../../services/apiService");
+const FlightBookingDAO = require("../../../../db/dao/FlightBookingDAO");
 const router = express.Router();
 
 /**
@@ -24,37 +24,31 @@ router.post("/", async (req, res, next) => {
   try {
     const responseData = await apiService.fetchData(requestData);
     if (responseData === "") {
-      return res
-        .status(400)
-        .json({
-          status: 400,
-          message: "Network error, please retry",
-          bookingCode,
-          nominal,
-        });
+      return res.status(400).json({
+        status: 400,
+        message: "Network error, please retry",
+        bookingCode,
+        nominal,
+      });
     } else {
       const paid =
         await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(
           bookingCode,
         );
       if (paid) {
-        return res
-          .status(200)
-          .json({
-            status: 200,
-            message: "Payment successful",
-            bookingCode,
-            nominal,
-          });
+        return res.status(200).json({
+          status: 200,
+          message: "Payment successful",
+          bookingCode,
+          nominal,
+        });
       } else {
-        return res
-          .status(404)
-          .json({
-            status: 404,
-            message: "Booking not found",
-            bookingCode,
-            nominal,
-          });
+        return res.status(404).json({
+          status: 404,
+          message: "Booking not found",
+          bookingCode,
+          nominal,
+        });
       }
     }
   } catch (error) {
