@@ -1,5 +1,7 @@
 const { prisma } = require("../index");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 class UserDAO {
   async register(username, password, isAdmin = false) {
@@ -25,8 +27,13 @@ class UserDAO {
         isAdmin: true,
         createdAt: true,
         updatedAt: true,
-        // password is excluded by select
       },
+    });
+  }
+
+  async findByUsernameWithPassword(username) {
+    return await prisma.user.findUnique({
+      where: { username },
     });
   }
 
@@ -80,6 +87,18 @@ class UserDAO {
     return await prisma.user.delete({
       where: { id: parseInt(id) },
     });
+  }
+
+  async comparePassword(plain, hashed) {
+    return await bcrypt.compare(plain, hashed);
+  }
+
+  generateJWT(user) {
+    return jwt.sign(
+      { id: user.id, username: user.username, isAdmin: user.isAdmin },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" },
+    );
   }
 }
 
