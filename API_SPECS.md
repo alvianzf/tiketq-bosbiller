@@ -4,60 +4,58 @@ This document provides a high-level overview of the TiketQ Bosbiller API archite
 
 ## Architecture
 
-The API is built using Node.js and Express, with PostgreSQL as the primary relational database (managed via Prisma ORM). Redis is used for caching search results and static data like airlines and airports.
+The API is built using Node.js and Express, with PostgreSQL as the primary relational database (managed via Prisma ORM). Redis is used for caching.
 
 ### Base URL
 
 - Development: `http://localhost:3000/api`
-- Production: (Defined by deployment environment)
+
+### Domain Structure
+
+- **Flight Domain** (`/api/flight`): Handles airports, airlines, flight search, and booking management.
+- **Auth Domain** (`/api/auth`): Handles user registration, login, and user profile management.
+- **Payment Domain** (`/api/payment`): Handles payment processing and Midtrans integration.
+- **Ferry Domain** (`/api/ferry`): Placeholder for upcoming ferry service integration.
 
 ## Core Components
 
-- **Database**: PostgreSQL with Prisma ORM for type-safe database access and migrations.
-- **Authentication**: JWT-based authentication. Use the `/api/auth` endpoint to obtain a token.
-- **Service Integration**: Communicates with external flight provider APIs via a centralized `ApiService`.
-- **Payment Gateway**: Integration with Midtrans for payment processing.
-- **Caching**: 24-hour cache for airline/airport lists; 30-minute cache for flight searches.
+- **Database**: PostgreSQL with Prisma ORM.
+- **Authentication**: JWT-based authentication.
+- **Caching**: Redis-based caching for frequent data.
+
+## API Endpoints Overview
+
+### Flight API
+
+- `GET /api/flight/airlines`: List all airlines.
+- `GET /api/flight/airports`: List all airports.
+- `POST /api/flight/search`: Search for available flights.
+- `POST /api/flight/book`: Create a new flight booking.
+- `GET /api/flight/book-info/:code`: Get booking details by code.
+- `GET /api/flight/search-airport/:query`: Search airports by name/code.
+- `GET /api/flight/bookings`: List all bookings (Requires Auth).
+
+### Auth API
+
+- `POST /api/auth`: User login.
+- `POST /api/auth/register`: User registration.
+- `POST /api/auth/admin-login`: Admin login.
+- `POST /api/auth/admin-register`: Admin registration (Requires Auth).
+- `GET /api/auth/users`: List all users (Requires Auth).
+
+### Payment API
+
+- `POST /api/payment`: Process payment for a booking.
+- `POST /api/payment/midtrans`: Generate Midtrans payment token.
 
 ## Data Models (Prisma)
 
-### User
-
-- `id`: Int (Auto-increment, Primary Key)
-- `username`: String (Unique)
-- `password`: String (Hashed)
-- `isAdmin`: Boolean
-- `createdAt`: DateTime
-- `updatedAt`: DateTime
-
-### Flight Booking
-
-- `id`: Int (Auto-increment, Primary Key)
-- `bookingCode`: String
-- `nominal`: String
-- `departureDate`: String
-- `origin`: String
-- `destination`: String
-- `mobile_number`: String
-- `name`: String
-- `book_date`: DateTime
-- `payment_status`: Boolean
-- `createdAt`: DateTime
-- `updatedAt`: DateTime
+Refer to [prisma/schema.prisma](file:///Users/azfaturrahman/Projects/tiketq/tiketq-bosbiller/prisma/schema.prisma) for detailed schema definitions.
 
 ## Error Handling
 
-The API uses standard HTTP status codes:
-
-- `200 OK`: Success
-- `201 Created`: Resource successfully created
-- `400 Bad Request`: Invalid input
-- `401 Unauthorized`: Authentication required or failed
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Generic server error
+The API utilizes standard HTTP status codes (200, 201, 400, 401, 403, 404, 500).
 
 ## API Documentation
 
-For interactive documentation, start the server and visit:
-[http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+Interactive documentation via Swagger UI: [http://localhost:3000/api-docs](http://localhost:3000/api-docs)

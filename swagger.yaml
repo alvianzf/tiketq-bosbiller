@@ -7,88 +7,42 @@ servers:
   - url: /
     description: Local server
 paths:
-  /api/airlines:
+  # Flight Domain
+  /api/flight/airlines:
     get:
       summary: Get all airlines
+      tags:
+        - Flight
       responses:
         "200":
           description: A list of airlines
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  rc:
-                    type: string
-                  msg:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        airlineCode:
-                          type: string
-                        airlineName:
-                          type: string
-  /api/airports:
+  /api/flight/airports:
     get:
       summary: Get all airports
+      tags:
+        - Flight
       responses:
         "200":
           description: A list of airports
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  rc:
-                    type: string
-                  msg:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                        name:
-                          type: string
-                        bandara:
-                          type: string
-                        group:
-                          type: string
-  /api/search:
+  /api/flight/search:
     post:
       summary: Search for flights
+      tags:
+        - Flight
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                departure:
-                  type: string
-                arrival:
-                  type: string
-                departureDate:
-                  type: string
-                returnDate:
-                  type: string
-                adult:
-                  type: integer
-                child:
-                  type: integer
-                infant:
-                  type: integer
       responses:
         "200":
           description: Search results
-  /api/book:
+  /api/flight/book:
     post:
       summary: Book a flight
+      tags:
+        - Flight
       requestBody:
         required: true
         content:
@@ -98,9 +52,11 @@ paths:
       responses:
         "200":
           description: Booking result
-  /api/book-info/{id}:
+  /api/flight/book-info/{id}:
     get:
       summary: Get booking information by ID
+      tags:
+        - Flight
       parameters:
         - name: id
           in: path
@@ -110,9 +66,11 @@ paths:
       responses:
         "200":
           description: Booking information
-  /api/search-airport/{query}:
+  /api/flight/search-airport/{query}:
     get:
       summary: Search for an airport
+      tags:
+        - Flight
       parameters:
         - name: query
           in: path
@@ -122,72 +80,118 @@ paths:
       responses:
         "200":
           description: List of matching airports
-  /api/auth/register:
-    post:
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                password:
-                  type: string
-      responses:
-        "201":
-          description: User registered
-  /api/auth:
-    post:
-      summary: Login user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                password:
-                  type: string
-      responses:
-        "200":
-          description: Login successful
-  /api/payment:
-    post:
-      summary: Process payment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                bookingCode:
-                  type: string
-                nominal:
-                  type: number
-      responses:
-        "200":
-          description: Payment processed
-  /api/flight-bookings:
+  /api/flight/bookings:
     get:
-      summary: Get all bookings (Protected)
+      summary: Get all flight bookings (Protected)
+      tags:
+        - Flight
       security:
         - bearerAuth: []
       responses:
         "200":
           description: List of bookings
     post:
-      summary: Create a booking record (Protected)
+      summary: Create a flight booking record (Protected)
+      tags:
+        - Flight
       security:
         - bearerAuth: []
       responses:
         "201":
           description: Booking created
+
+  # Auth Domain
+  /api/auth:
+    post:
+      summary: Login user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Login successful
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: User registered
+  /api/auth/admin-login:
+    post:
+      summary: Admin login
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: Admin login successful
+  /api/auth/admin-register:
+    post:
+      summary: Admin registration (Protected)
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Admin registered
+  /api/auth/users:
+    get:
+      summary: Get all users (Protected)
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+
+  # Payment Domain
+  /api/payment:
+    post:
+      summary: Process payment
+      tags:
+        - Payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Payment processed
+  /api/payment/midtrans:
+    post:
+      summary: Create Midtrans token
+      tags:
+        - Payment
+      responses:
+        "200":
+          description: Token created
+
+  # Ferry Domain
+  /api/ferry:
+    get:
+      summary: Ferry API placeholder
+      tags:
+        - Ferry
+      responses:
+        "200":
+          description: Welcome to Ferry API
+
 components:
   securitySchemes:
     bearerAuth:

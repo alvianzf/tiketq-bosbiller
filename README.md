@@ -20,28 +20,28 @@ Before you begin, ensure you have met the following requirements:
 
 ## 📦 Installation
 
-1. **Clone the repository:**
+1.  **Clone the repository:**
 
-   ```bash
-   git clone <repository-url>
-   cd tiketq-bosbiller
-   ```
+    ```bash
+    git clone <repository-url>
+    cd tiketq-bosbiller
+    ```
 
-2. **Install dependencies:**
+2.  **Install dependencies:**
 
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 
-3. **Configure Environment:**
-   Copy the example environment file and update the variables.
-   ```bash
-   cp .env.example .env
-   ```
-   Update `.env` with your credentials:
-   - `DATABASE_URL`: Your PostgreSQL connection string (e.g., `postgresql://user:password@localhost:5432/db_name`).
-   - `MIDTRANS_SERVER_KEY` / `MIDTRANS_CLIENT_KEY`: Your payment gateway keys.
-   - `CORS_ORIGIN`: Allowed origins (e.g., `http://localhost:5173`).
+3.  **Configure Environment:**
+    Copy the example environment file and update the variables.
+    ```bash
+    cp .env.example .env
+    ```
+    Update `.env` with your credentials:
+    - `DATABASE_URL`: Your PostgreSQL connection string.
+    - `MIDTRANS_SERVER_KEY` / `MIDTRANS_CLIENT_KEY`: Your payment gateway keys.
+    - `CORS_ORIGIN`: Allowed origins.
 
 ## 🏃‍♂️ Usage
 
@@ -67,17 +67,30 @@ Once the server is running, visit:
 
 Detailed API documentation is available in the following formats:
 
-- **Swagger UI**: [http://localhost:3000/api-docs](http://localhost:3000/api-docs) (when server is running)
+- **Swagger UI**: [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
 - **API Specifications**: [API_SPECS.md](./API_SPECS.md)
 
-### List of APIs
+### Flight API (`/api/flight`)
 
-1. [Get Airlines](#get-airlines)
-2. [Get Airports](#get-airports)
-3. [Search Flights](#post-search-flights)
-4. [Book Flights](#post-book-flights)
-5. [Get Booking Information](#get-get-booking-information)
-6. [Search Airport](#get-search-airport)
+1.  [Get Airlines](#get-airlines) - `GET /api/flight/airlines`
+2.  [Get Airports](#get-airports) - `GET /api/flight/airports`
+3.  [Search Flights](#post-search-flights) - `POST /api/flight/search`
+4.  [Book Flights](#post-book-flights) - `POST /api/flight/book`
+5.  [Get Booking Info](#get-booking-info) - `GET /api/flight/book-info/:code`
+6.  [Search Airport](#get-search-airport) - `GET /api/flight/search-airport/:query`
+7.  [List Bookings](#list-bookings) - `GET /api/flight/bookings` (Protected)
+
+### Auth API (`/api/auth`)
+
+1.  [Login](#login) - `POST /api/auth`
+2.  [Register](#register) - `POST /api/auth/register`
+3.  [Admin Login](#admin-login) - `POST /api/auth/admin-login`
+4.  [User List](#user-list) - `GET /api/auth/users` (Protected)
+
+### Payment API (`/api/payment`)
+
+1.  [Process Payment](#payment) - `POST /api/payment`
+2.  [Get Token](#midtrans-token) - `POST /api/payment/midtrans`
 
 ---
 
@@ -86,61 +99,15 @@ Detailed API documentation is available in the following formats:
 **Request:**
 
 ```http
-GET /api/airlines
+GET /api/flight/airlines
 ```
-
-**Response:**
-
-```json
-{
-    "rc": "00",
-    "msg": "sukses",
-    "data": [
-        {
-            "airlineCode": "XXX",
-            "airlineName": "Airline 1"
-        },
-        ...
-    ]
-}
-```
-
----
-
-### `GET` Airports
-
-**Request:**
-
-```http
-GET /api/airports
-```
-
-**Response:**
-
-```json
-{
-    "rc": "00",
-    "msg": "sukses",
-    "data": [
-        {
-            "code": "XXX",
-            "name": "Airport 1",
-            "bandara": "Bandara 1",
-            "group": "Domestik"
-        },
-        ...
-    ]
-}
-```
-
----
 
 ### `POST` Search Flights
 
 **Request:**
 
 ```http
-POST /api/search
+POST /api/flight/search
 ```
 
 **Body**
@@ -150,104 +117,23 @@ POST /api/search
   "departure": "CGK",
   "arrival": "SIN",
   "departureDate": "2025-07-01",
-  "returnDate": "2025-07-10",
-  "adult": 1,
-  "child": 0,
-  "infant": 0
-}
-```
-
-**Response:**
-
-```json
-{
-  "rc": "00",
-  "msg": "Sukses",
-  "data": [
-    ...
-  ]
-}
-```
-
----
-
-### `POST` Book Flights
-
-**Request:**
-
-```http
-POST /api/book
-```
-
-**Body**
-
-```json
-{
-  "searchId": "...",
-  "buyer": { ... },
-  "passengers": { ... }
-}
-```
-
-**Response:**
-
-```json
-{
-  "bookingCode": "RUEHS"
-}
-```
-
----
-
-### `GET` Get Booking Information
-
-**Request:**
-
-```http
-GET /api/book-info/:code
-```
-
-**Response:**
-
-```json
-{
-  "rc": "00",
-  "msg": "Sukses",
-  "data": { ... }
-}
-```
-
----
-
-### `GET` Search Airport
-
-**Request:**
-
-```http
-GET /api/search-airport/:query
-```
-
-**Response:**
-
-```json
-{
-  "data": [ ... ]
+  "adult": 1
 }
 ```
 
 ## 📂 Project Structure
 
 - `bin/`: Server entry point.
-- `routes/`: API route definitions.
-- `db/`: Database models and connection logic.
-- `middleware/`: Custom Express middleware (error handling, auth).
+- `routes/api/`: Domain-based route definitions (flight, auth, payment).
+- `db/`: Database configuration and seeds (Prisma/PostgreSQL).
+- `middleware/`: Custom Express middleware.
 - `services/`: Business logic.
 - `utils/`: Utility functions.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request for improvements.
+Contributions are welcome!
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License.
