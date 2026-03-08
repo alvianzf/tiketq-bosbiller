@@ -19,14 +19,18 @@ const allowedOrigins = [
   "http://117.102.64.238:1212",
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://tiketq.com",
-  "https://www.tiketq.com",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) return callback(null, true);
+
+      const isAllowedBase = allowedOrigins.includes(origin);
+      const isTiketQSubdomain =
+        origin.endsWith(".tiketq.com") || origin === "https://tiketq.com";
+
+      if (isAllowedBase || isTiketQSubdomain) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
