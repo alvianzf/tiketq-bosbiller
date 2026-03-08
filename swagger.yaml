@@ -129,7 +129,19 @@ paths:
       responses:
         "201":
           description: User registered
-  /api/auth/admin-login:
+  /api/auth/me:
+    get:
+      summary: Get current user profile
+      description: Returns the profile of the currently logged-in user based on the JWT token.
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile retrieved successfully
+        "401":
+          description: Unauthorized
     post:
       summary: Admin login
       tags:

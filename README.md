@@ -84,13 +84,20 @@ Detailed API documentation is available in the following formats:
 
 1.  [Login](#login) - `POST /api/auth`
 2.  [Register](#register) - `POST /api/auth/register`
-3.  [Admin Login](#admin-login) - `POST /api/auth/admin-login`
-4.  [User List](#user-list) - `GET /api/auth/users` (Protected)
+3.  [Get Current User](#get-current-user) - `GET /api/auth/me` (Protected)
+4.  [Admin Login](#admin-login) - `POST /api/auth/admin-login`
+5.  [User List](#user-list) - `GET /api/auth/users` (Protected)
 
 ### Payment API (`/api/payment`)
 
 1.  [Process Payment](#payment) - `POST /api/payment`
 2.  [Get Token](#midtrans-token) - `POST /api/payment/midtrans`
+
+### Ferry API (`/api/ferry`)
+
+1.  [Get Ports](#ports) - `GET /api/ferry/ports` (Protected)
+2.  [Search Trips](#search-trips) - `POST /api/ferry/trips/search` (Protected)
+3.  [Reserve Booking](#reserve-booking) - `POST /api/ferry/booking/reserve` (Protected)
 
 ---
 

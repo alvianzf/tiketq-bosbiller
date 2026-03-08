@@ -39,7 +39,8 @@ The API is built using Node.js and Express, with PostgreSQL as the primary relat
 
 - `POST /api/auth`: User login.
 - `POST /api/auth/register`: User registration.
-- `POST /api/auth/admin-login`: Admin login.
+- `POST /api/auth/admin-login` - Admin login endpoint
+- `GET /api/auth/me` - Get current user profile (Protected)
 - `POST /api/auth/admin-register`: Admin registration (Requires Auth).
 - `GET /api/auth/users`: List all users (Requires Auth).
 
@@ -47,6 +48,15 @@ The API is built using Node.js and Express, with PostgreSQL as the primary relat
 
 - `POST /api/payment`: Process payment for a booking.
 - `POST /api/payment/midtrans`: Generate Midtrans payment token.
+
+### Ferry API
+
+- `GET /api/ferry/ports`: List ports (Requires Auth).
+- `GET /api/ferry/sectors`: List sectors (Requires Auth).
+- `POST /api/ferry/trips/search`: Search ferry trips (Requires Auth).
+- `POST /api/ferry/booking/reserve`: Reserve a booking (Requires Auth).
+- `POST /api/ferry/booking/confirm`: Confirm a booking (Requires Auth).
+- `GET /api/ferry/booking/:id`: Get booking by ID (Requires Auth).
 
 ## Data Models (Prisma)
 

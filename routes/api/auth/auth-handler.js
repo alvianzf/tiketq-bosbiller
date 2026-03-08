@@ -80,4 +80,14 @@ router.post("/admin-login", authValidation, (req, res) =>
 );
 router.post("/", authValidation, (req, res) => loginUser(req, res));
 
+/**
+ * Returns the current user's profile based on the JWT.
+ */
+router.get("/me", authMiddleware, (req, res) => {
+  res.json({
+    user: req.user,
+    message: "User profile retrieved successfully.",
+  });
+});
+
 module.exports = router;
