@@ -1,13 +1,5 @@
-/**
- * Seeds the default admin user into the database if it doesn't already exist.
- * 
- * This function checks if an admin user with the default username exists. If not, it creates a new admin user with the default username and password.
- * 
- * @returns {void} This function does not return a value. It logs a success or failure message to the console.
- */
-const mongoose = require('mongoose');
+const { prisma } = require('../index');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
 require('dotenv').config();
 
 const DEFAULT_USER = process.env.DEFAULT_USER;
@@ -15,7 +7,9 @@ const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD;
 
 async function seedAdmin() {
   try {
-    const existingAdmin = await User.findOne({ username: DEFAULT_USER });
+    const existingAdmin = await prisma.user.findUnique({
+      where: { username: DEFAULT_USER }
+    });
 
     if (existingAdmin) {
       console.log('Admin user already exists.');
@@ -23,13 +17,14 @@ async function seedAdmin() {
     }
 
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-    const adminUser = new User({
-      username: DEFAULT_USER,
-      password: hashedPassword,
-      isAdmin: true
+    await prisma.user.create({
+      data: {
+        username: DEFAULT_USER,
+        password: hashedPassword,
+        isAdmin: true
+      }
     });
 
-    await adminUser.save();
     console.log(`Admin user seeded successfully with username: ${DEFAULT_USER}.`);
   } catch (err) {
     console.error(`Admin user seeding failed: ${err.message}`);
