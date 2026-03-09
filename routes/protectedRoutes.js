@@ -8,7 +8,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 /**
  * Mounting the payment API routes at the '/api/payment' path.
  */
-router.use("/api/payment", require("./api/payment"));
+router.use("/api/payment", require("./api/flight/payment"));
 
 /**
  * Mounting the flight bookings API routes at the '/api/flight/bookings' path.
@@ -18,7 +18,7 @@ router.use("/api/payment", require("./api/payment"));
 router.use(
   "/api/flight/bookings",
   authMiddleware,
-  require("./api/flight-bookings"),
+  require("./api/flight/flight-bookings"),
 );
 
 /**

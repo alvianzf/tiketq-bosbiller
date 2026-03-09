@@ -28,7 +28,35 @@ const makeRequest = async (method, url, data = {}, token) => {
   } else {
     config.data = data;
   }
-  return apiClient(config);
+  try {
+    return await apiClient(config);
+  } catch (err) {
+    let errorMessage = "Ferry API Request failed";
+
+    if (err.response) {
+      const status = err.response.status;
+      if (status === 403) {
+        errorMessage =
+          "Access Denied by Ferry API (Likely IP Whitelisting Issue)";
+      } else if (status === 401) {
+        errorMessage =
+          "Unauthorized access to Ferry API. Please check credentials.";
+      } else {
+        errorMessage =
+          err.response.data?.message ||
+          err.message ||
+          `Ferry API responded with status ${status}`;
+      }
+    } else if (err.request) {
+      errorMessage =
+        "No response received from Ferry API. It might be down or blocked.";
+    } else {
+      errorMessage = err.message;
+    }
+
+    console.error(`Ferry API Error [${url}]:`, errorMessage);
+    throw new Error(errorMessage);
+  }
 };
 
 const validateFields = (fields, body, res) => {

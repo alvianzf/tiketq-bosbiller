@@ -50,6 +50,8 @@ router.get("/", async (req, res, next) => {
  */
 async function getCachedData() {
   const client = await getRedisClient();
+  if (!client) return null;
+
   const cachedData = await client.get(CACHE_KEY);
   if (cachedData) {
     console.log("Returning cached data");
@@ -106,6 +108,8 @@ function sortAirports(airports) {
  */
 async function cacheResponse(key, data) {
   const client = await getRedisClient();
+  if (!client) return;
+
   await client.set(key, JSON.stringify(data), {
     EX: CACHE_EXPIRY,
   });

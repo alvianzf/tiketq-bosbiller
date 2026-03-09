@@ -35,10 +35,11 @@ router.post("/", async (req, res, next) => {
 
   try {
     const client = await getRedisClient();
-    const cachedResponse = await client.get(cacheKey);
-
-    if (cachedResponse) {
-      return res.json(JSON.parse(cachedResponse));
+    if (client) {
+      const cachedResponse = await client.get(cacheKey);
+      if (cachedResponse) {
+        return res.json(JSON.parse(cachedResponse));
+      }
     }
 
     const requestBodies = createRequestBodies(req.body);
@@ -51,9 +52,11 @@ router.post("/", async (req, res, next) => {
     };
 
     // Cache the result with 30-minute expiration
-    await client.set(cacheKey, JSON.stringify(returnData), {
-      EX: 1800, // Set expiry to 30 minutes
-    });
+    if (client) {
+      await client.set(cacheKey, JSON.stringify(returnData), {
+        EX: 1800, // Set expiry to 30 minutes
+      });
+    }
 
     res.json(returnData);
   } catch (err) {

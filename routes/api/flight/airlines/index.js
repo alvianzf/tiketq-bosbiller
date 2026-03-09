@@ -27,16 +27,20 @@ router.get("/", async (req, res, next) => {
 
   try {
     const client = await getRedisClient();
-    const cachedData = await client.get(cacheKey);
-    if (cachedData) {
-      console.log("Returning cached data");
-      return res.send(JSON.parse(cachedData));
+    if (client) {
+      const cachedData = await client.get(cacheKey);
+      if (cachedData) {
+        console.log("Returning cached data");
+        return res.send(JSON.parse(cachedData));
+      }
     }
 
     const responseData = await apiService.fetchData(requestData);
-    await client.set(cacheKey, JSON.stringify(responseData), {
-      EX: 86400, // Set expiry to 24 hours in seconds
-    });
+    if (client) {
+      await client.set(cacheKey, JSON.stringify(responseData), {
+        EX: 86400, // Set expiry to 24 hours in seconds
+      });
+    }
 
     res.send(responseData);
   } catch (error) {

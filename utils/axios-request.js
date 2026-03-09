@@ -49,10 +49,38 @@ const makeRequest = (data = {}) => {
   }
 
   return axiosInstance.post(FLIGHT_API_URL, data).catch((err) => {
-    const errorMessage =
-      err.code === "ECONNABORTED"
-        ? "Flight API request timed out"
-        : err.response?.data?.message || err.message || "Internal Server Error";
+    let errorMessage = "Internal Server Error";
+
+    if (err.code === "ECONNABORTED") {
+      errorMessage = "Flight API request timed out";
+    } else if (err.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      const status = err.response.status;
+      const data = err.response.data;
+
+      if (status === 403) {
+        errorMessage =
+          "Access Denied by Flight API (Likely IP Whitelisting Issue)";
+      } else if (status === 401) {
+        errorMessage =
+          "Unauthorized access to Flight API. Please check credentials.";
+      } else if (status === 404) {
+        errorMessage = "Flight API endpoint not found.";
+      } else {
+        errorMessage =
+          data?.message ||
+          err.message ||
+          `Flight API responded with status ${status}`;
+      }
+    } else if (err.request) {
+      // The request was made but no response was received
+      errorMessage =
+        "No response received from Flight API. It might be down or blocked.";
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      errorMessage = err.message;
+    }
 
     console.error(`Flight API Error [${FLIGHT_API_URL}]:`, errorMessage);
     return Promise.reject(
