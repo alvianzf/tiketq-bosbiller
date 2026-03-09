@@ -52,9 +52,29 @@ paths:
     get:
       summary: List ferry sectors
       tags: [Ferry]
+  /api/ferry/master/routes:
+    get:
+      summary: List ferry routes
+      tags: [Ferry]
   /api/ferry/trips/search:
     get:
       summary: Search ferry trips
+      tags: [Ferry]
+  /api/ferry/booking:
+    post:
+      summary: Initialize ferry booking
+      tags: [Ferry]
+  /api/ferry/booking/{id}/details:
+    post:
+      summary: Add passenger details to booking
+      tags: [Ferry]
+  /api/ferry/booking/submit:
+    post:
+      summary: Submit ferry booking
+      tags: [Ferry]
+  /api/ferry/order/{id}/print:
+    get:
+      summary: Get order printout
       tags: [Ferry]
 
 components:

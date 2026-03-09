@@ -104,6 +104,9 @@ Detailed API documentation is available in the following formats:
 1.  [Available Sectors](#sectors) - `GET /api/ferry/master/sectors` (Protected)
 2.  [Search Trips](#search-trips) - `GET /api/ferry/trips/search` (Protected)
 3.  [Reserve Booking](#reserve-booking) - `POST /api/ferry/booking` (Protected)
+4.  [Passenger Details](#passenger-details) - `POST /api/ferry/booking/:id/details` (Protected)
+5.  [Submit Booking](#submit-booking) - `POST /api/ferry/booking/submit` (Protected)
+6.  [Order Printout](#order-print) - `GET /api/ferry/order/:id/print` (Protected)
 
 ---
 

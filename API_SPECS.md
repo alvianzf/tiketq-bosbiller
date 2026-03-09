@@ -45,14 +45,43 @@ The API is built using Node.js and Express, with PostgreSQL as the primary relat
 - `GET /api/auth/users`: List all users (Requires Auth).
 - `GET /api/auth/users/:id`: Get user by ID (Requires Auth).
 
-- `GET /api/ferry/agent/agents`: List ferry agents (Requires Auth).
-- `GET /api/ferry/master/sectors`: List available ferry sectors (Requires Auth).
-- `GET /api/ferry/master/routes`: List ferry routes (Requires Auth).
-- `GET /api/ferry/trips/search`: Search available ferry trips (Requires Auth).
-- `POST /api/ferry/booking`: Reserve a ferry booking (Requires Auth).
-- `POST /api/ferry/booking/:id/details`: Add passenger details to booking (Requires Auth).
-- `POST /api/ferry/booking/submit`: Submit a ferry booking (Requires Auth).
-- `GET /api/ferry/booking/:id`: Get ferry booking details (Requires Auth).
+### Ferry API
+
+Endpoints under `/api/ferry` generally require authentication (Sindo Ferry Token is managed automatically).
+
+#### Agent & Credit
+
+- `GET /api/ferry/agent/agents`: List ferry agents.
+- `GET /api/ferry/credit`: Get credit monitoring data.
+
+#### Master Data
+
+- `GET /api/ferry/master/sectors`: List available ferry sectors.
+- `GET /api/ferry/master/routes`: List ferry routes.
+- `GET /api/ferry/master/countries`: Get country list.
+
+#### Trips
+
+- `GET /api/ferry/trips/search`: Search available ferry trips.
+  - Query params: `embarkation`, `destination`, `tripdate`.
+
+#### Booking & Passengers
+
+- `POST /api/ferry/booking`: Initialize a ferry booking.
+- `POST /api/ferry/booking/:id/details`: Add passenger details to booking.
+- `POST /api/ferry/booking/submit`: Submit/finalize a ferry booking.
+- `GET /api/ferry/booking/:id`: Get ferry booking details.
+- `GET /api/ferry/booking/:id/pricing`: Get booking details with pricing.
+- `POST /api/ferry/booking/transfer`: Create a booking transfer.
+- `GET /api/ferry/booking/transfer/:id`: Get booking transfer details.
+
+#### Orders & Post-Booking
+
+- `GET /api/ferry/order/vouchers`: List agent voucher types.
+- `GET /api/ferry/order/vouchers/:id`: Get voucher type details.
+- `GET /api/ferry/order/:id/print`: Get printout for an order.
+- `POST /api/ferry/order/:id/whatsapp`: Send order details via WhatsApp.
+- `POST /api/ferry/order/:id/email`: Send order details via Email.
 
 ## Data Models (Prisma)
 
