@@ -1,9 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const ensureToken = require("../../../../middleware/ensure-token");
-const { makeRequest } = require("../utils");
-
-router.get("/vouchers", ensureToken, async (req, res, next) => {
+router.get("/vouchers", async (req, res, next) => {
   const { searchString, pageIndex = 0, pageSize = 0 } = req.query;
   try {
     const response = await makeRequest(
@@ -22,7 +19,7 @@ router.get("/vouchers", ensureToken, async (req, res, next) => {
   }
 });
 
-router.get("/vouchers/:id", ensureToken, async (req, res, next) => {
+router.get("/vouchers/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
     const response = await makeRequest(
@@ -37,7 +34,7 @@ router.get("/vouchers/:id", ensureToken, async (req, res, next) => {
   }
 });
 
-router.get("/:id/print", ensureToken, async (req, res, next) => {
+router.get("/:id/print", async (req, res, next) => {
   const { id } = req.params;
   try {
     const response = await makeRequest(
@@ -52,7 +49,7 @@ router.get("/:id/print", ensureToken, async (req, res, next) => {
   }
 });
 
-router.post("/:id/whatsapp", ensureToken, async (req, res, next) => {
+router.post("/:id/whatsapp", async (req, res, next) => {
   const { id } = req.params;
   try {
     const response = await makeRequest(
@@ -67,7 +64,7 @@ router.post("/:id/whatsapp", ensureToken, async (req, res, next) => {
   }
 });
 
-router.post("/:id/email", ensureToken, async (req, res, next) => {
+router.post("/:id/email", async (req, res, next) => {
   const { id } = req.params;
   try {
     const response = await makeRequest(

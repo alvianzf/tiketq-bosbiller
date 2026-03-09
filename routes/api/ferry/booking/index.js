@@ -1,10 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const ensureToken = require("../../../../middleware/ensure-token");
-const { makeRequest, validateFields } = require("../utils");
-const FerryBookingDAO = require("../../../../db/dao/FerryBookingDAO");
-
-router.post("/", ensureToken, async (req, res, next) => {
+router.post("/", async (req, res, next) => {
   try {
     const response = await makeRequest(
       "post",
@@ -46,7 +42,7 @@ router.post("/", ensureToken, async (req, res, next) => {
   }
 });
 
-router.post("/:id/details", ensureToken, async (req, res, next) => {
+router.post("/:id/details", async (req, res, next) => {
   const { id } = req.params;
   try {
     const response = await makeRequest(
@@ -61,7 +57,7 @@ router.post("/:id/details", ensureToken, async (req, res, next) => {
   }
 });
 
-router.post("/submit", ensureToken, async (req, res, next) => {
+router.post("/submit", async (req, res, next) => {
   const requiredFields = ["id", "emailConfirmation", "remarks"];
   if (!validateFields(requiredFields, req.body, res)) return;
 
@@ -113,7 +109,7 @@ router.get("/:id/pricing", ensureToken, async (req, res, next) => {
   }
 });
 
-router.post("/transfer", ensureToken, async (req, res, next) => {
+router.post("/transfer", async (req, res, next) => {
   try {
     const response = await makeRequest(
       "post",

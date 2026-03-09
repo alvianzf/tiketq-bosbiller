@@ -1,9 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const ensureToken = require("../../../../middleware/ensure-token");
-const { makeRequest } = require("../utils");
-
-router.get("/sectors", ensureToken, async (req, res, next) => {
+router.get("/sectors", async (req, res, next) => {
   try {
     const response = await makeRequest(
       "get",
@@ -17,7 +14,7 @@ router.get("/sectors", ensureToken, async (req, res, next) => {
   }
 });
 
-router.get("/routes", ensureToken, async (req, res, next) => {
+router.get("/routes", async (req, res, next) => {
   const { searchString, sectorID, pageIndex = 0, pageSize = 0 } = req.query;
   try {
     const response = await makeRequest(
@@ -37,7 +34,7 @@ router.get("/routes", ensureToken, async (req, res, next) => {
   }
 });
 
-router.get("/countries", ensureToken, async (req, res, next) => {
+router.get("/countries", async (req, res, next) => {
   const { searchString, sort, pageIndex = 0, pageSize = 0 } = req.query;
   try {
     const response = await makeRequest(

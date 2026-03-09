@@ -17,7 +17,17 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+const getFerryToken = require("../../../utils/node-cache");
+
 const makeRequest = async (method, url, data = {}, token) => {
+  if (!token) {
+    try {
+      token = await getFerryToken();
+    } catch (err) {
+      console.warn("Failed to fetch ferry token automatically:", err.message);
+    }
+  }
+
   const config = {
     method,
     url,
@@ -55,7 +65,14 @@ const makeRequest = async (method, url, data = {}, token) => {
     }
 
     console.error(`Ferry API Error [${url}]:`, errorMessage);
-    throw new Error(errorMessage);
+
+    const error = new Error(errorMessage);
+    error.errors = [errorMessage];
+    if (err.response && err.response.data) {
+      error.details = err.response.data;
+    }
+
+    throw error;
   }
 };
 

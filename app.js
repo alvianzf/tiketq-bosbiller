@@ -66,12 +66,35 @@ connectDB();
 
 // Required for seed
 const seedAdmin = require("./db/seeds/seedAdmin");
-seedAdmin();
+const UserDAO = require("./db/dao/UserDAO");
 
-// Get Ferry Token
-getFerryToken().catch((err) => {
-  console.error("Failed to initialize Ferry Token:", err.message);
-});
+(async () => {
+  await seedAdmin();
+
+  // Automated Admin Login
+  try {
+    const admin = await UserDAO.findByUsername(
+      process.env.DEFAULT_USER || "alvianzf",
+    );
+    if (admin) {
+      const token = UserDAO.generateJWT(admin);
+      console.log("--------------------------------------------------");
+      console.log("Admin session initialized successfully");
+      console.log("JWT Token:", token);
+      console.log("--------------------------------------------------");
+    }
+  } catch (err) {
+    console.error("Failed to initialize Admin session:", err.message);
+  }
+
+  // Get Ferry Token
+  try {
+    await getFerryToken();
+    console.log("Ferry client initialized successfully");
+  } catch (err) {
+    console.error("Failed to initialize Ferry Token:", err.message);
+  }
+})();
 
 // Use routes
 app.use("/", routes);

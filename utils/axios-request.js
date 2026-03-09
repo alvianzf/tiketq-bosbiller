@@ -83,9 +83,15 @@ const makeRequest = (data = {}) => {
     }
 
     console.error(`Flight API Error [${FLIGHT_API_URL}]:`, errorMessage);
-    return Promise.reject(
-      new Error(`Flight API Request failed: ${errorMessage}`),
-    );
+
+    const error = new Error(`Flight API Request failed: ${errorMessage}`);
+    error.errors = [errorMessage];
+    if (err.response && err.response.data) {
+      error.details = err.response.data;
+      // If the 3rd party returns a more specific error structure, we could add it here
+    }
+
+    return Promise.reject(error);
   });
 };
 
