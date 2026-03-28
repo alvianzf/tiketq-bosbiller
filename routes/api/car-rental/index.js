@@ -71,8 +71,26 @@ router.put("/cars/:id", async (req, res, next) => {
 // DELETE /api/car-rental/cars/:id
 router.delete("/cars/:id", async (req, res, next) => {
   try {
-    await CarDAO.deleteCar(req.params.id);
-    res.json({ message: "Car deleted successfully" });
+    const carId = req.params.id;
+    // Get all photos associated before deletion
+    const photos = await CarDAO.getPhotos(carId);
+
+    // Perform database deletion (cascades automatically for records)
+    await CarDAO.deleteCar(carId);
+
+    // Physically delete files from the disk
+    for (const photo of photos) {
+      const filepath = path.join(__dirname, "../../../../uploads/cars", photo.filename);
+      if (fs.existsSync(filepath)) {
+        try {
+          fs.unlinkSync(filepath);
+        } catch (err) {
+          console.error(`Failed to delete file: ${filepath}`, err);
+        }
+      }
+    }
+
+    res.json({ message: "Car and associated photos deleted successfully" });
   } catch (err) { next(err); }
 });
 
@@ -92,13 +110,18 @@ router.post("/cars/:id/photos", uploadCarPhotos.array("photos", 10), async (req,
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ status: 400, message: "No photos uploaded." });
     }
-    const isPrimary = req.body.isPrimary === "true";
+
+    // Check if car already has photos
+    const existingPhotos = await CarDAO.getPhotos(req.params.id);
+    const hasPrimary = existingPhotos.some(p => p.isPrimary);
+
     const saved = await Promise.all(
       req.files.map((file, index) =>
         CarDAO.addPhoto(req.params.id, {
           filename: file.filename,
           url: carPhotoUrl(file.filename),
-          isPrimary: isPrimary && index === 0,
+          // Set as primary if specifically requested OR if no primary exists yet (first photo of the batch)
+          isPrimary: (req.body.isPrimary === "true" && index === 0) || (!hasPrimary && index === 0),
         })
       )
     );
