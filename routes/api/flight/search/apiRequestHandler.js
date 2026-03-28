@@ -26,8 +26,8 @@ const createRequestBodies = (params) => {
  * @returns {Array} - The fetched airline data.
  */
 const fetchAirlineData = async (requestBodies) => {
-  const makeRequest = require('../../../utils/axios-request');
-  const updateLogoURLs = require('../../../utils/update-logo');
+  const makeRequest = require('../../../../utils/axios-request');
+  const updateLogoURLs = require('../../../../utils/update-logo');
 
   const responses = await Promise.all(requestBodies.map(requestBody => 
     makeRequest(JSON.stringify(requestBody))
