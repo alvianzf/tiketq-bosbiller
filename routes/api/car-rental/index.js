@@ -51,9 +51,9 @@ const uploadKtp = multer({
 });
 
 // ── Helper ────────────────────────────────────────────────────────────────────
-const BASE_URL = process.env.API_BASE_URL || "http://localhost:5001";
-const carPhotoUrl = (filename) => `${BASE_URL}/uploads/cars/${filename}`;
-const ktpUrl = (filename) => `${BASE_URL}/uploads/car-rental/${filename}`;
+const getBaseUrl = (req) => process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+const carPhotoUrl = (req, filename) => `${getBaseUrl(req)}/uploads/cars/${filename}`;
+const ktpUrl = (req, filename) => `${getBaseUrl(req)}/uploads/car-rental/${filename}`;
 
 // ── Car CRUD ──────────────────────────────────────────────────────────────────
 
@@ -180,18 +180,18 @@ router.post(
       const existingPhotos = await CarDAO.getPhotos(req.params.id);
       const hasPrimary = existingPhotos.some((p) => p.isPrimary);
 
-      const saved = await Promise.all(
-        req.files.map((file, index) =>
-          CarDAO.addPhoto(req.params.id, {
-            filename: file.filename,
-            url: carPhotoUrl(file.filename),
-            // Set as primary if specifically requested OR if no primary exists yet (first photo of the batch)
-            isPrimary:
-              (req.body.isPrimary === "true" && index === 0) ||
-              (!hasPrimary && index === 0),
-          }),
-        ),
-      );
+    const saved = await Promise.all(
+      req.files.map((file, index) =>
+        CarDAO.addPhoto(req.params.id, {
+          filename: file.filename,
+          url: carPhotoUrl(req, file.filename),
+          // Set as primary if specifically requested OR if no primary exists yet (first photo of the batch)
+          isPrimary:
+            (req.body.isPrimary === "true" && index === 0) ||
+            (!hasPrimary && index === 0),
+        }),
+      ),
+    );
       res.status(201).json({ status: 201, data: saved });
     } catch (err) {
       next(err);
@@ -271,8 +271,8 @@ router.post(
         fullName,
         phone,
         email,
-        ktpImage: ktpUrl(files.ktpImage[0].filename),
-        ktpSelfie: ktpUrl(files.ktpSelfie[0].filename),
+        ktpImage: ktpUrl(req, files.ktpImage[0].filename),
+        ktpSelfie: ktpUrl(req, files.ktpSelfie[0].filename),
       });
       res.status(201).json({
         status: 201,
