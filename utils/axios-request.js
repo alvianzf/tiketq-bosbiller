@@ -58,49 +58,51 @@ const makeRequest = (data = {}) => {
   
   console.log(`[${timestamp}] >>> Outbound Flight API Request [${FLIGHT_API_URL}]:`, JSON.stringify(logData, null, 2));
 
-  return axiosInstance.post(FLIGHT_API_URL, data).catch((err) => {
-    let errorMessage = "Internal Server Error";
+  return axiosInstance.post(FLIGHT_API_URL, data)
+    .then(response => {
+      console.log(`[${new Date().toISOString()}] <<< Inbound Flight API Response [${FLIGHT_API_URL}] Status: ${response.status}`);
+      const responseSnippet = JSON.stringify(response.data).substring(0, 500);
+      console.log(`[${new Date().toISOString()}] Result Data Snippet: ${responseSnippet}${JSON.stringify(response.data).length > 500 ? '...' : ''}`);
+      return response;
+    })
+    .catch((err) => {
+      let errorMessage = "Internal Server Error";
 
-    if (err.code === "ECONNABORTED") {
-      errorMessage =
-        "The Flight API service is taking too long to respond. Please try again in a few moments.";
-    } else if (err.response) {
-      const status = err.response.status;
-      if (status === 403) {
-        errorMessage =
-          "Access to the Flight API was denied. This is usually due to an IP whitelisting restriction on the server. Please contact support.";
-      } else if (status === 401) {
-        errorMessage =
-          "The Flight API credentials appear to be invalid. This is a configuration issue on our end.";
-      } else if (status === 404) {
-        errorMessage =
-          "The Flight API endpoint was not found. The service provider may have changed their API structure.";
+      if (err.code === "ECONNABORTED") {
+        errorMessage = "The Flight API service is taking too long to respond. Please try again in a few moments.";
+      } else if (err.response) {
+        const status = err.response.status;
+        if (status === 403) {
+          errorMessage = "Access to the Flight API was denied. This is usually due to an IP whitelisting restriction on the server. Please contact support.";
+        } else if (status === 401) {
+          errorMessage = "The Flight API credentials appear to be invalid. This is a configuration issue on our end.";
+        } else if (status === 404) {
+          errorMessage = "The Flight API endpoint was not found. The service provider may have changed their API structure.";
+        } else {
+          errorMessage = err.response.data?.message || err.message || `The Flight API service responded with an error (Status: ${status}).`;
+        }
+      } else if (err.request) {
+        errorMessage = "No response was received from the Flight API. The service may be temporarily down or our server IP might be blocked.";
       } else {
-        errorMessage =
-          err.response.data?.message ||
-          err.message ||
-          `The Flight API service responded with an error (Status: ${status}).`;
+        errorMessage = err.message;
       }
-    } else if (err.request) {
-      errorMessage =
-        "No response was received from the Flight API. The service may be temporarily down or our server IP might be blocked.";
-    } else {
-      errorMessage = err.message;
-    }
 
-    console.error(`Flight API Error [${FLIGHT_API_URL}]:`, errorMessage);
+      console.error(`[${new Date().toISOString()}] !!! Flight API Error [${FLIGHT_API_URL}]:`, errorMessage);
+      if (err.response?.data) {
+        console.error("Error Response Data:", JSON.stringify(err.response.data, null, 2));
+      }
 
-    const error = new Error(errorMessage);
-    error.status = err.response ? 502 : 504; // 502 Bad Gateway or 504 Gateway Timeout
-    error.source = "FlightAPI";
-    error.errors = [errorMessage];
+      const error = new Error(errorMessage);
+      error.status = err.response ? (err.response.status >= 500 ? 502 : err.response.status) : 504;
+      error.source = "FlightAPI";
+      error.errors = [errorMessage];
+      
+      if (err.response && err.response.data) {
+        error.details = err.response.data;
+      }
 
-    if (err.response && err.response.data) {
-      error.details = err.response.data;
-    }
-
-    return Promise.reject(error);
-  });
+      return Promise.reject(error);
+    });
 };
 
 module.exports = makeRequest;

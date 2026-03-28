@@ -69,6 +69,11 @@ async function fetchAndProcessAirportsData() {
   const requestData = { f: "airports" };
   const responseData = await apiService.fetchData(requestData);
 
+  if (!responseData || !responseData.data || !Array.isArray(responseData.data)) {
+    console.warn("Unexpected Flight API response structure for airports:", JSON.stringify(responseData));
+    return responseData || { data: [] };
+  }
+
   responseData.data = sortAirports(responseData.data);
   return responseData;
 }
