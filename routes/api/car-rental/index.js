@@ -216,6 +216,35 @@ router.delete("/photos/:photoId", async (req, res, next) => {
   }
 });
 
+// DELETE /api/car-rental/photos/bulk
+router.delete("/photos/bulk", async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 400, message: "No photo IDs provided." });
+    }
+
+    const photos = await CarDAO.getPhotosByIds(ids);
+    await CarDAO.deletePhotosByIds(ids);
+
+    // Physically delete files from the disk
+    for (const photo of photos) {
+      const filepath = path.join(__dirname, "../../../uploads/cars", photo.filename);
+      if (fs.existsSync(filepath)) {
+        try {
+          fs.unlinkSync(filepath);
+        } catch (err) {
+          console.error(`Failed to delete file ${filepath}:`, err.message);
+        }
+      }
+    }
+
+    res.json({ status: 200, message: `${photos.length} photos deleted successfully.` });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Search / Types (public-facing) ────────────────────────────────────────────
 
 // GET /api/car-rental/search

@@ -66,6 +66,14 @@ class CarDAO {
     return prisma.carPhoto.findMany({ where: { carId: parseInt(carId) }, orderBy: { isPrimary: "desc" } });
   }
 
+  async getPhotosByIds(ids) {
+    return prisma.carPhoto.findMany({ where: { id: { in: ids.map((id) => parseInt(id)) } } });
+  }
+
+  async deletePhotosByIds(ids) {
+    return prisma.carPhoto.deleteMany({ where: { id: { in: ids.map((id) => parseInt(id)) } } });
+  }
+
   // ── Rental Requests ───────────────────────────────────────
   async createRentalRequest({ carId, date, fullName, phone, email, ktpImage, ktpSelfie }) {
     const car = await this.getCarById(carId);
