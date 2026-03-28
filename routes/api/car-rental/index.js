@@ -1,122 +1,187 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const router = express.Router();
+const CarDAO = require("../../../db/dao/CarDAO");
 
-// --- Storage: save uploads to /uploads/car-rental ---
-const uploadDir = path.join(__dirname, "../../../../uploads/car-rental");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// ── File Upload Setup ─────────────────────────────────────────────────────────
+const makeUploadDir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); return dir; };
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
-  },
+const carPhotoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, makeUploadDir(path.join(__dirname, "../../../../uploads/cars"))),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed."));
+const ktpStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, makeUploadDir(path.join(__dirname, "../../../../uploads/car-rental"))),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
+});
+
+const imageOnly = (_req, file, cb) =>
+  file.mimetype.startsWith("image/") ? cb(null, true) : cb(new Error("Only image files are allowed."));
+
+const uploadCarPhotos = multer({ storage: carPhotoStorage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: imageOnly });
+const uploadKtp = multer({ storage: ktpStorage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: imageOnly });
+
+// ── Helper ────────────────────────────────────────────────────────────────────
+const BASE_URL = process.env.API_BASE_URL || "http://localhost:5001";
+const carPhotoUrl = (filename) => `${BASE_URL}/uploads/cars/${filename}`;
+const ktpUrl = (filename) => `${BASE_URL}/uploads/car-rental/${filename}`;
+
+// ── Car CRUD ──────────────────────────────────────────────────────────────────
+
+// GET /api/car-rental/cars  — list all (supports ?type=SUV&rows=2&available=true)
+router.get("/cars", async (req, res, next) => {
+  try {
+    const cars = await CarDAO.getAllCars(req.query);
+    res.json({ status: 200, data: cars });
+  } catch (err) { next(err); }
+});
+
+// GET /api/car-rental/cars/:id
+router.get("/cars/:id", async (req, res, next) => {
+  try {
+    const car = await CarDAO.getCarById(req.params.id);
+    if (!car) return res.status(404).json({ status: 404, message: "Car not found." });
+    res.json({ status: 200, data: car });
+  } catch (err) { next(err); }
+});
+
+// POST /api/car-rental/cars  — create car (JSON body)
+router.post("/cars", async (req, res, next) => {
+  try {
+    const { name, type, rows, pricePerDay, transmission, description, features } = req.body;
+    if (!name || !type || !rows || !pricePerDay) {
+      return res.status(400).json({ status: 400, message: "name, type, rows, and pricePerDay are required." });
     }
-  },
+    const car = await CarDAO.createCar({ name, type, rows, pricePerDay, transmission, description, features });
+    res.status(201).json({ status: 201, data: car });
+  } catch (err) { next(err); }
 });
 
-// Car inventory (shared — in production move to DB / shared module)
-const CAR_INVENTORY = [
-  { id: "1", name: "Toyota Agya", type: "City Car", rows: 2, pricePerDay: 350000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "2", name: "Honda Brio", type: "City Car", rows: 2, pricePerDay: 380000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "3", name: "Toyota Camry", type: "Sedan", rows: 2, pricePerDay: 750000, transmission: "Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Top condition"], available: true },
-  { id: "4", name: "Honda Accord", type: "Sedan", rows: 2, pricePerDay: 700000, transmission: "Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Top condition"], available: true },
-  { id: "5", name: "Toyota Fortuner", type: "SUV", rows: 2, pricePerDay: 900000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Top condition"], available: true },
-  { id: "6", name: "Honda CR-V", type: "SUV", rows: 2, pricePerDay: 850000, transmission: "Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "7", name: "Toyota Innova Zenix", type: "MPV", rows: 3, pricePerDay: 950000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Top condition", "Complimentary entrance tickets"], available: true },
-  { id: "8", name: "Mitsubishi Xpander", type: "MPV", rows: 3, pricePerDay: 800000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "9", name: "Daihatsu Luxio", type: "MPV", rows: 3, pricePerDay: 700000, transmission: "Manual", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "10", name: "Toyota HiAce", type: "Minibus", rows: 3, pricePerDay: 1200000, transmission: "Manual", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Up to 15 passengers"], available: true },
-  { id: "11", name: "Isuzu Elf", type: "Minibus", rows: 3, pricePerDay: 1100000, transmission: "Manual", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Up to 12 passengers"], available: true },
-  { id: "12", name: "Toyota Hilux", type: "Pick-up", rows: 2, pricePerDay: 850000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "13", name: "Mitsubishi Triton", type: "Double Cabin", rows: 2, pricePerDay: 950000, transmission: "Manual / Matic", features: ["Driver included", "Fuel included", "Free pickup & dropoff"], available: true },
-  { id: "14", name: "Toyota Quantum Van", type: "Van", rows: 3, pricePerDay: 1000000, transmission: "Manual", features: ["Driver included", "Fuel included", "Free pickup & dropoff", "Large cargo space"], available: true },
-];
-
-/**
- * GET /api/car-rental/search
- */
-router.get("/search", (req, res) => {
-  const { type, rows } = req.query;
-  let results = CAR_INVENTORY.filter((car) => car.available);
-  if (type && type !== "all") results = results.filter((c) => c.type.toLowerCase() === type.toLowerCase());
-  if (rows) {
-    const r = parseInt(rows);
-    if (!isNaN(r)) results = results.filter((c) => c.rows === r);
-  }
-  return res.json({ status: 200, data: results, total: results.length });
+// PUT /api/car-rental/cars/:id  — partial update
+router.put("/cars/:id", async (req, res, next) => {
+  try {
+    const car = await CarDAO.updateCar(req.params.id, req.body);
+    res.json({ status: 200, data: car });
+  } catch (err) { next(err); }
 });
 
-/**
- * GET /api/car-rental/types
- */
-router.get("/types", (req, res) => {
-  const types = [...new Set(CAR_INVENTORY.map((c) => c.type))];
-  return res.json({ status: 200, data: types });
+// DELETE /api/car-rental/cars/:id
+router.delete("/cars/:id", async (req, res, next) => {
+  try {
+    await CarDAO.deleteCar(req.params.id);
+    res.json({ status: 200, message: "Car deleted." });
+  } catch (err) { next(err); }
 });
 
-/**
- * POST /api/car-rental/rent
- * Body (multipart): carId, carName, date, fullName, phone, email, ktpImage (file), ktpSelfie (file)
- */
-router.post(
-  "/rent",
-  upload.fields([
-    { name: "ktpImage", maxCount: 1 },
-    { name: "ktpSelfie", maxCount: 1 },
-  ]),
-  (req, res, next) => {
-    try {
-      const { carId, carName, date, fullName, phone, email } = req.body;
-      const files = req.files;
+// ── Car Photos ────────────────────────────────────────────────────────────────
 
-      if (!carId || !fullName || !phone || !email) {
-        return res.status(400).json({ status: 400, message: "Missing required fields." });
-      }
-      if (!files?.ktpImage || !files?.ktpSelfie) {
-        return res.status(400).json({ status: 400, message: "Both KTP photo and selfie are required." });
-      }
+// GET /api/car-rental/cars/:id/photos
+router.get("/cars/:id/photos", async (req, res, next) => {
+  try {
+    const photos = await CarDAO.getPhotos(req.params.id);
+    res.json({ status: 200, data: photos });
+  } catch (err) { next(err); }
+});
 
-      // In production: save to DB, trigger notification, etc.
-      const rentalRequest = {
-        id: `RENT-${Date.now()}`,
-        carId,
-        carName,
-        date,
-        fullName,
-        phone,
-        email,
-        ktpImage: files.ktpImage[0].filename,
-        ktpSelfie: files.ktpSelfie[0].filename,
-        status: "PENDING_REVIEW",
-        createdAt: new Date().toISOString(),
-      };
-
-      return res.status(201).json({
-        status: 201,
-        message: "Rental request received. Our team will contact you shortly.",
-        data: rentalRequest,
-      });
-    } catch (err) {
-      next(err);
+// POST /api/car-rental/cars/:id/photos  — upload 1–10 photos
+router.post("/cars/:id/photos", uploadCarPhotos.array("photos", 10), async (req, res, next) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ status: 400, message: "No photos uploaded." });
     }
-  },
-);
+    const isPrimary = req.body.isPrimary === "true";
+    const saved = await Promise.all(
+      req.files.map((file, index) =>
+        CarDAO.addPhoto(req.params.id, {
+          filename: file.filename,
+          url: carPhotoUrl(file.filename),
+          isPrimary: isPrimary && index === 0,
+        })
+      )
+    );
+    res.status(201).json({ status: 201, data: saved });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/car-rental/photos/:photoId
+router.delete("/photos/:photoId", async (req, res, next) => {
+  try {
+    const photo = await CarDAO.deletePhoto(req.params.photoId);
+    // Remove file from disk
+    const filepath = path.join(__dirname, "../../../../uploads/cars", photo.filename);
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+    res.json({ status: 200, message: "Photo deleted." });
+  } catch (err) { next(err); }
+});
+
+// ── Search / Types (public-facing) ────────────────────────────────────────────
+
+// GET /api/car-rental/search
+router.get("/search", async (req, res, next) => {
+  try {
+    const cars = await CarDAO.getAllCars({ ...req.query, available: true });
+    res.json({ status: 200, data: cars, total: cars.length });
+  } catch (err) { next(err); }
+});
+
+// GET /api/car-rental/types
+router.get("/types", async (req, res, next) => {
+  try {
+    const cars = await CarDAO.getAllCars();
+    const types = [...new Set(cars.map((c) => c.type))];
+    res.json({ status: 200, data: types });
+  } catch (err) { next(err); }
+});
+
+// ── Rental Requests ────────────────────────────────────────────────────────────
+
+// POST /api/car-rental/rent
+router.post("/rent", uploadKtp.fields([{ name: "ktpImage", maxCount: 1 }, { name: "ktpSelfie", maxCount: 1 }]), async (req, res, next) => {
+  try {
+    const { carId, date, fullName, phone, email } = req.body;
+    const files = req.files;
+    if (!carId || !fullName || !phone || !email) {
+      return res.status(400).json({ status: 400, message: "Missing required fields." });
+    }
+    if (!files?.ktpImage || !files?.ktpSelfie) {
+      return res.status(400).json({ status: 400, message: "Both KTP photo and selfie are required." });
+    }
+    const rental = await CarDAO.createRentalRequest({
+      carId,
+      date,
+      fullName,
+      phone,
+      email,
+      ktpImage: ktpUrl(files.ktpImage[0].filename),
+      ktpSelfie: ktpUrl(files.ktpSelfie[0].filename),
+    });
+    res.status(201).json({
+      status: 201,
+      message: "Rental request received. Our team will contact you shortly.",
+      data: rental,
+    });
+  } catch (err) { next(err); }
+});
+
+// GET /api/car-rental/rent  — admin: list all requests
+router.get("/rent", async (req, res, next) => {
+  try {
+    const requests = await CarDAO.getAllRentalRequests();
+    res.json({ status: 200, data: requests });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/car-rental/rent/:id/status
+router.patch("/rent/:id/status", async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ status: 400, message: "status is required." });
+    const updated = await CarDAO.updateRentalStatus(req.params.id, status);
+    res.json({ status: 200, data: updated });
+  } catch (err) { next(err); }
+});
 
 module.exports = router;

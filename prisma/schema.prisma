@@ -24,6 +24,7 @@ model User {
 enum ServiceType {
   FLIGHT
   FERRY
+  CAR_RENTAL
 }
 
 model Transaction {
@@ -127,4 +128,51 @@ model Terminal {
   updatedAt           DateTime @updatedAt
 
   @@map("terminals")
+}
+
+model Car {
+  id           Int        @id @default(autoincrement())
+  name         String
+  type         String
+  rows         Int
+  pricePerDay  Decimal
+  transmission String?
+  description  String?
+  features     String[]
+  available    Boolean    @default(true)
+  photos       CarPhoto[]
+  rentals      CarRentalRequest[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@map("cars")
+}
+
+model CarPhoto {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  url       String
+  isPrimary Boolean  @default(false)
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  carId     Int
+  createdAt DateTime @default(now())
+
+  @@map("car_photos")
+}
+
+model CarRentalRequest {
+  id         Int      @id @default(autoincrement())
+  car        Car      @relation(fields: [carId], references: [id])
+  carId      Int
+  date       String
+  fullName   String
+  phone      String
+  email      String
+  ktpImage   String
+  ktpSelfie  String
+  status     String   @default("PENDING_REVIEW")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("car_rental_requests")
 }
