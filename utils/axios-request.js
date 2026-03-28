@@ -48,7 +48,15 @@ const makeRequest = (data = {}) => {
     );
   }
 
-  console.log({ data });
+  const timestamp = new Date().toISOString();
+  let logData = data;
+  try {
+    if (typeof data === 'string') logData = JSON.parse(data);
+  } catch (e) {
+    // Keep as string if not JSON
+  }
+  
+  console.log(`[${timestamp}] >>> Outbound Flight API Request [${FLIGHT_API_URL}]:`, JSON.stringify(logData, null, 2));
 
   return axiosInstance.post(FLIGHT_API_URL, data).catch((err) => {
     let errorMessage = "Internal Server Error";
