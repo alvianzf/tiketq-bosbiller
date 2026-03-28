@@ -5,7 +5,7 @@ Welcome to the **TiketQ Bosbiller API**. This service handles flight searches, b
 ## 🚀 Features
 
 - **Flight Search & Booking**: Real-time flight availability, booking, and payment.
-- **Ferry Service**: Sindo Ferry API integration for real-time search and booking.
+- **Ferry Service**: Sindo Ferry API integration for real-time search and booking (End-to-End flow verified and functional).
 - **User Management**: Authentication and account management consolidated under Auth.
 - **Payments**: Integrated Midtrans and direct flight payment services.
 - **Swagger UI**: Interactive API documentation.
