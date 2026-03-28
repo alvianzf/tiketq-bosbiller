@@ -16,13 +16,13 @@ const app = express();
 
 // Enable CORS
 const allowedOrigins = [
-  // "http://117.102.64.238:1212",
-  // "http://localhost:3000",
-  // "http://localhost:3001",
-  // "https://tiketq.com",
-  // "http://129.226.155.85:3001",
-  // "http://129.226.155.85:3000",
-  "*",
+  "http://117.102.64.238:1212",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://tiketq.com",
+  "http://129.226.155.85:3001",
+  "http://129.226.155.85:3000",
+  // "*",
 ];
 
 app.use(
@@ -68,45 +68,45 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // Connect to Database
 connectDB();
 
-  // Required for seed
-  const seedAdmin = require("./db/seeds/seedAdmin");
-  const UserDAO = require("./db/dao/UserDAO");
-  const getRedisClient = require("./utils/redisClient"); // Added Redis check
+// Required for seed
+const seedAdmin = require("./db/seeds/seedAdmin");
+const UserDAO = require("./db/dao/UserDAO");
+const getRedisClient = require("./utils/redisClient"); // Added Redis check
 
-  (async () => {
-    await seedAdmin();
+(async () => {
+  await seedAdmin();
 
-    // Automated Admin Login
-    try {
-      const admin = await UserDAO.findByUsername(
-        process.env.DEFAULT_USER || "alvianzf",
-      );
-      if (admin) {
-        const token = UserDAO.generateJWT(admin);
-        console.log("--------------------------------------------------");
-        console.log("Admin session initialized successfully");
-        console.log("JWT Token:", token);
-        console.log("--------------------------------------------------");
-      }
-    } catch (err) {
-      console.error("Failed to initialize Admin session:", err.message);
+  // Automated Admin Login
+  try {
+    const admin = await UserDAO.findByUsername(
+      process.env.DEFAULT_USER || "alvianzf",
+    );
+    if (admin) {
+      const token = UserDAO.generateJWT(admin);
+      console.log("--------------------------------------------------");
+      console.log("Admin session initialized successfully");
+      console.log("JWT Token:", token);
+      console.log("--------------------------------------------------");
     }
+  } catch (err) {
+    console.error("Failed to initialize Admin session:", err.message);
+  }
 
-    // Initialize Redis
-    try {
-      await getRedisClient();
-    } catch (err) {
-      console.error("Failed to initialize Redis client:", err.message);
-    }
+  // Initialize Redis
+  try {
+    await getRedisClient();
+  } catch (err) {
+    console.error("Failed to initialize Redis client:", err.message);
+  }
 
-    // Get Ferry Token
-    try {
-      await getFerryToken();
-      console.log("Ferry client initialized successfully");
-    } catch (err) {
-      console.error("Failed to initialize Ferry Token:", err.message);
-    }
-  })();
+  // Get Ferry Token
+  try {
+    await getFerryToken();
+    console.log("Ferry client initialized successfully");
+  } catch (err) {
+    console.error("Failed to initialize Ferry Token:", err.message);
+  }
+})();
 
 // Use routes
 app.use("/", routes);
