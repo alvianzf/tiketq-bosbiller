@@ -19,6 +19,7 @@ const allowedOrigins = [
   "http://117.102.64.238:1212",
   "http://localhost:3000",
   "http://localhost:3001",
+  "https://tiketq.com",
 ];
 
 app.use(
