@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const { makeRequest } = require("../utils");
+
 router.get("/sectors", async (req, res, next) => {
   try {
     const response = await makeRequest("get", "/Agent/Booking/Sectors/Available", {}, req.token);
