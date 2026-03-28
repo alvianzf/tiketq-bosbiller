@@ -10,6 +10,7 @@ const domains = {
   auth: require("./auth"),
   ferry: require("./ferry"),
   history: require("./history"),
+  "car-rental": require("./car-rental"),
 };
 
 /**
@@ -26,7 +27,7 @@ router.get("/", (req, res, next) => {
   try {
     res.json({
       message:
-        "Welcome to the API! Explore the available domains: flight, auth, payment, ferry.",
+        "Welcome to the API! Explore the available domains: flight, auth, payment, ferry, car-rental.",
       error: null,
     });
   } catch (err) {
