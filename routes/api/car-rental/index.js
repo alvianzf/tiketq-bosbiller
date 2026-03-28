@@ -13,7 +13,7 @@ const makeUploadDir = (dir) => {
 
 const carPhotoStorage = multer.diskStorage({
   destination: (_req, _file, cb) =>
-    cb(null, makeUploadDir(path.join(__dirname, "../../../../uploads/cars"))),
+    cb(null, makeUploadDir(path.join(__dirname, "../../../uploads/cars"))),
   filename: (_req, file, cb) =>
     cb(
       null,
@@ -25,7 +25,7 @@ const ktpStorage = multer.diskStorage({
   destination: (_req, _file, cb) =>
     cb(
       null,
-      makeUploadDir(path.join(__dirname, "../../../../uploads/car-rental")),
+      makeUploadDir(path.join(__dirname, "../../../uploads/car-rental")),
     ),
   filename: (_req, file, cb) =>
     cb(
@@ -206,7 +206,7 @@ router.delete("/photos/:photoId", async (req, res, next) => {
     // Remove file from disk
     const filepath = path.join(
       __dirname,
-      "../../../../uploads/cars",
+      "../../../uploads/cars",
       photo.filename,
     );
     if (fs.existsSync(filepath)) fs.unlinkSync(filepath);

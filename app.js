@@ -63,6 +63,10 @@ app.use(
   "/assets",
   express.static(path.join(__dirname, "assets"), { maxAge: 31557600000 }),
 );
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"), { maxAge: 31557600000 }),
+);
 
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
