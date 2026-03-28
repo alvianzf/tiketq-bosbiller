@@ -1,26 +1,27 @@
 const axios = require("axios");
 require("dotenv").config();
 
-const { FERRY_URL } = process.env;
+const { FERRY_URL, FERRY_CORE_URL } = process.env;
 
-const apiClient = axios.create({
-  baseURL: FERRY_URL,
-});
-
-apiClient.interceptors.request.use(
-  (config) => {
-    if (config.token) {
-      config.headers.Authorization = `Bearer ${config.token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+const apiEndpoints = {
+  api: axios.create({ baseURL: FERRY_URL }),
+  core: axios.create({ baseURL: FERRY_CORE_URL }),
+};
 
 const getFerryToken = require("../../../utils/node-cache");
 
-const makeRequest = async (method, url, data = {}, token) => {
-  if (!token) {
+/**
+ * Make a request to Ferry 3rd party API
+ * @param {string} method - HTTP method
+ * @param {string} url - endpoint path
+ * @param {object} data - request body or query params
+ * @param {string} token - authorization token
+ * @param {string} type - 'api' (default) or 'core'
+ */
+const makeRequest = async (method, url, data = {}, token, type = "api") => {
+  const apiClient = apiEndpoints[type] || apiEndpoints.api;
+  
+  if (type === "api" && !token) {
     try {
       token = await getFerryToken();
     } catch (err) {
@@ -31,9 +32,14 @@ const makeRequest = async (method, url, data = {}, token) => {
   const config = {
     method,
     url,
-    token,
+    headers: {},
   };
-  if (method === "get") {
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (method.toLowerCase() === "get") {
     config.params = data;
   } else {
     config.data = data;

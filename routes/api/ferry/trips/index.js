@@ -8,7 +8,7 @@ router.get("/search", async (req, res, next) => {
     const requiredFields = ["embarkation", "destination", "tripdate"];
     if (!validateFields(requiredFields, req.query, res)) return;
 
-    const response = await makeRequest("get", "/Trips/GetTripWeb", { embarkation, destination, tripdate });
+    const response = await makeRequest("get", "/Trips/GetTripWeb", { embarkation, destination, tripdate }, null, "core");
     res.json({
       message: response.data?.message || response.data?.msg || "Trips fetched successfully",
       data: response.data?.data || response.data
