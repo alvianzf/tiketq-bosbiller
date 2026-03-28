@@ -20,6 +20,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://tiketq.com",
+  "https://dashboard.tiketq.com",
   "http://129.226.155.85:3001",
   "http://129.226.155.85:3000",
   "http://129.226.155.85:3002",
