@@ -67,15 +67,14 @@ async function getCachedData() {
  */
 async function fetchAndProcessAirportsData() {
   const requestData = { f: "airports" };
-  const responseData = await apiService.fetchData(requestData);
+  const airports = await apiService.fetchData(requestData);
 
-  if (!responseData || !responseData.data || !Array.isArray(responseData.data)) {
-    console.warn("Unexpected Flight API response structure for airports:", JSON.stringify(responseData));
-    return responseData || { data: [] };
+  if (!airports || !Array.isArray(airports)) {
+    console.warn("Unexpected Flight API response structure for airports (expected array):", JSON.stringify(airports));
+    return Array.isArray(airports) ? airports : [];
   }
 
-  responseData.data = sortAirports(responseData.data);
-  return responseData;
+  return sortAirports(airports);
 }
 
 /**

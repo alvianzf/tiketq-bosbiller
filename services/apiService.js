@@ -13,6 +13,10 @@ class ApiService {
   async fetchData(data) {
     try {
       const response = await this.makeRequestWithData(data);
+      // Return just the data array as requested
+      if (response && response.data && response.data.data) {
+        return response.data.data;
+      }
       return response.data;
     } catch (error) {
       // Preserve status and source if they exist
