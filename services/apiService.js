@@ -15,7 +15,10 @@ class ApiService {
       const response = await this.makeRequestWithData(data);
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch data: ${error.message}`);
+      // Preserve status and source if they exist
+      if (!error.status) error.status = 502;
+      if (!error.source) error.source = "FlightAPI";
+      throw error;
     }
   }
 
@@ -35,7 +38,9 @@ class ApiService {
       const response = await this.makeRequestWithData(data);
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch booking info: ${error.message}`);
+      if (!error.status) error.status = 502;
+      if (!error.source) error.source = "FlightAPI";
+      throw error;
     }
   }
 
@@ -46,12 +51,8 @@ class ApiService {
    * @returns {object} Response.
    */
   async makeRequestWithData(data) {
-    try {
-      const response = await makeRequest(JSON.stringify(data));
-      return response;
-    } catch (error) {
-      throw new Error(`API request failed: ${error.message}`);
-    }
+    // Just return the result or let error bubble from utilities
+    return makeRequest(JSON.stringify(data));
   }
 }
 

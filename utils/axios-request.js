@@ -52,43 +52,33 @@ const makeRequest = (data = {}) => {
     let errorMessage = "Internal Server Error";
 
     if (err.code === "ECONNABORTED") {
-      errorMessage = "Flight API request timed out";
+      errorMessage = "The Flight API service is taking too long to respond. Please try again in a few moments.";
     } else if (err.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       const status = err.response.status;
-      const data = err.response.data;
-
       if (status === 403) {
-        errorMessage =
-          "Access Denied by Flight API (Likely IP Whitelisting Issue)";
+        errorMessage = "Access to the Flight API was denied. This is usually due to an IP whitelisting restriction on the server. Please contact support.";
       } else if (status === 401) {
-        errorMessage =
-          "Unauthorized access to Flight API. Please check credentials.";
+        errorMessage = "The Flight API credentials appear to be invalid. This is a configuration issue on our end.";
       } else if (status === 404) {
-        errorMessage = "Flight API endpoint not found.";
+        errorMessage = "The Flight API endpoint was not found. The service provider may have changed their API structure.";
       } else {
-        errorMessage =
-          data?.message ||
-          err.message ||
-          `Flight API responded with status ${status}`;
+        errorMessage = err.response.data?.message || err.message || `The Flight API service responded with an error (Status: ${status}).`;
       }
     } else if (err.request) {
-      // The request was made but no response was received
-      errorMessage =
-        "No response received from Flight API. It might be down or blocked.";
+      errorMessage = "No response was received from the Flight API. The service may be temporarily down or our server IP might be blocked.";
     } else {
-      // Something happened in setting up the request that triggered an Error
       errorMessage = err.message;
     }
 
     console.error(`Flight API Error [${FLIGHT_API_URL}]:`, errorMessage);
 
-    const error = new Error(`Flight API Request failed: ${errorMessage}`);
+    const error = new Error(errorMessage);
+    error.status = err.response ? 502 : 504; // 502 Bad Gateway or 504 Gateway Timeout
+    error.source = "FlightAPI";
     error.errors = [errorMessage];
+    
     if (err.response && err.response.data) {
       error.details = err.response.data;
-      // If the 3rd party returns a more specific error structure, we could add it here
     }
 
     return Promise.reject(error);

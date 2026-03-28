@@ -11,6 +11,7 @@ const domains = {
   ferry: require("./ferry"),
   history: require("./history"),
   "car-rental": require("./car-rental"),
+  proxy: require("./proxy"),
 };
 
 /**

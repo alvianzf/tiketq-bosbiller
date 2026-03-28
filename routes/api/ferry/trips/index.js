@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const axios = require("axios");
+const { makeRequest, validateFields } = require("../utils");
 
 router.get("/search", async (req, res, next) => {
   const { embarkation, destination, tripdate } = req.query;
@@ -8,11 +8,10 @@ router.get("/search", async (req, res, next) => {
     const requiredFields = ["embarkation", "destination", "tripdate"];
     if (!validateFields(requiredFields, req.query, res)) return;
 
-    const response = await axios.get(
-      "https://core.test.sindoferry.com.sg/api/Trips/GetTripWeb",
-      {
-        params: { embarkation, destination, tripdate },
-      },
+    const response = await makeRequest(
+      "get",
+      "/Trips/GetTripWeb",
+      { embarkation, destination, tripdate }
     );
     res.json(response.data);
   } catch (error) {

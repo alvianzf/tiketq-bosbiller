@@ -60,7 +60,7 @@ router.post("/", async (req, res, next) => {
 
     res.json(returnData);
   } catch (err) {
-    next(createError(500, err.message || "Internal Server Error"));
+    next(err);
   }
 });
 

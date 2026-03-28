@@ -19,9 +19,22 @@ async function createMidtransToken(transactionDetails) {
 
     return transaction.token;
   } catch (error) {
-    const errorMessage = `Failed to create Midtrans token: ${error.message}`;
-    console.error(errorMessage);
-    throw new Error(errorMessage);
+    let errorMessage = "Failed to communicate with Midtrans payment service.";
+    
+    if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+      errorMessage = "Midtrans authentication failed. Please check the server's Midtrans API keys.";
+    } else if (error.message.includes("ETIMEDOUT") || error.message.includes("ENOTFOUND")) {
+      errorMessage = "Could not connect to Midtrans. The service might be down or unreachable from this server.";
+    } else {
+      errorMessage = `Midtrans Error: ${error.message}`;
+    }
+
+    console.error(`Midtrans API Error: ${errorMessage}`);
+    
+    const err = new Error(errorMessage);
+    err.status = 502; // Bad Gateway
+    err.source = "MidtransAPI";
+    throw err;
   }
 }
 
