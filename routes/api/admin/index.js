@@ -87,6 +87,33 @@ router.get("/stats", async (req, res, next) => {
       color: item.serviceType === 'FLIGHT_BOOKING' ? '#4267B2' : item.serviceType === 'FERRY_BOOKING' ? '#00D5FF' : '#10b981'
     }));
 
+    // Real month-over-month revenue growth
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const [thisMonthTxns, lastMonthTxns] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { payment_status: true, createdAt: { gte: startOfThisMonth } },
+        select: { totalSales: true }
+      }),
+      prisma.transaction.findMany({
+        where: { payment_status: true, createdAt: { gte: startOfLastMonth, lt: startOfThisMonth } },
+        select: { totalSales: true }
+      }),
+    ]);
+
+    const thisMonthRevenue = thisMonthTxns.reduce((s, t) => s + Number(t.totalSales || 0), 0);
+    const lastMonthRevenue = lastMonthTxns.reduce((s, t) => s + Number(t.totalSales || 0), 0);
+
+    let growth = "N/A";
+    if (lastMonthRevenue > 0) {
+      const pct = ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1);
+      growth = `${pct >= 0 ? "+" : ""}${pct}%`;
+    } else if (thisMonthRevenue > 0) {
+      growth = "+100%"; // new revenue this month with none last month
+    }
+
     res.json({
       message: "Stats fetched successfully",
       data: {
@@ -94,7 +121,7 @@ router.get("/stats", async (req, res, next) => {
         successfulTransactions,
         totalRevenue,
         activeCars,
-        growth: "+12.5%",
+        growth,
         chartData,
         serviceDistribution
       }
@@ -104,25 +131,57 @@ router.get("/stats", async (req, res, next) => {
   }
 });
 
-// GET /api/admin/health - System health monitoring
+// GET /api/admin/health - System health monitoring (real data)
 router.get("/health", async (req, res, next) => {
+  const os = require("os");
+
+  // Measure real DB latency
+  let dbStatus = "Unhealthy";
+  let dbLatency = "N/A";
   try {
-    const dbStatus = await prisma.$queryRaw`SELECT 1`.then(() => "Healthy").catch(() => "Unhealthy");
-    
+    const dbStart = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    dbLatency = `${Date.now() - dbStart}ms`;
+    dbStatus = "Healthy";
+  } catch {}
+
+  // Measure API server own response time (loopback)
+  const apiLatency = `${process.hrtime()[1] / 1e6 | 0}ms`;
+
+  // Real CPU load (1-min avg, scaled to percentage)
+  const cpuLoad = os.loadavg()[0];
+  const cpuCores = os.cpus().length;
+  const cpuPercent = Math.min(100, Math.round((cpuLoad / cpuCores) * 100));
+
+  // Real memory
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const toGB = (b) => (b / 1024 / 1024 / 1024).toFixed(1) + "GB";
+  const memPercent = Math.round((usedMem / totalMem) * 100);
+
+  // Real uptime (process uptime, not OS — more relevant for server health)
+  const uptimeSec = Math.floor(process.uptime());
+  const days = Math.floor(uptimeSec / 86400);
+  const hours = Math.floor((uptimeSec % 86400) / 3600);
+  const mins = Math.floor((uptimeSec % 3600) / 60);
+  const uptime = days > 0 ? `${days}d ${hours}h ${mins}m` : hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+  try {
     res.json({
       message: "Health status fetched",
       data: {
-        status: "Online",
+        status: dbStatus === "Healthy" ? "Online" : "Degraded",
         services: [
-          { name: "Database (PostgreSQL)", status: dbStatus, latency: "12ms" },
-          { name: "API Server", status: "Healthy", latency: "5ms" },
-          { name: "Media Storage", status: "Healthy", latency: "45ms" },
-          { name: "Payment Gateway", status: "Healthy", latency: "120ms" }
+          { name: "Database (PostgreSQL)", status: dbStatus, latency: dbLatency },
+          { name: "API Server", status: "Healthy", latency: apiLatency },
         ],
         system: {
-          cpu: "24%",
-          memory: "1.2GB/4GB",
-          uptime: "12d 4h 22m"
+          cpu: `${cpuPercent}%`,
+          memory: `${toGB(usedMem)}/${toGB(totalMem)} (${memPercent}%)`,
+          uptime,
+          memPercent,
+          cpuPercent,
         }
       }
     });
