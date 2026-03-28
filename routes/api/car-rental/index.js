@@ -222,20 +222,27 @@ router.delete("/photos/:photoId", async (req, res, next) => {
   }
 });
 
-// DELETE /api/car-rental/photos/bulk
-router.delete("/photos/bulk", async (req, res, next) => {
+// POST /api/car-rental/photos/bulk-delete
+router.post("/photos/bulk-delete", async (req, res, next) => {
   try {
     const { ids } = req.body;
-    console.log(`[DELETE_BULK] IDs received:`, ids);
+    console.log(`[POST_BULK_DELETE] IDs received:`, ids);
+    
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ status: 400, message: "No photo IDs provided." });
+      return res.status(400).json({ status: 400, message: "No valid photo IDs provided." });
     }
 
-    const photos = await CarDAO.getPhotosByIds(ids);
-    console.log(`[DELETE_BULK] Found ${photos.length} photos in DB to delete:`, photos.map(p => p.id));
+    // Ensure all IDs are valid numbers
+    const validIds = ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+    if (validIds.length === 0) {
+      return res.status(400).json({ status: 400, message: "No valid numeric photo IDs provided." });
+    }
+
+    const photos = await CarDAO.getPhotosByIds(validIds);
+    console.log(`[POST_BULK_DELETE] Found ${photos.length} photos in DB to delete:`, photos.map(p => p.id));
     
-    const deleteResult = await CarDAO.deletePhotosByIds(ids);
-    console.log(`[DELETE_BULK] Prisma delete count:`, deleteResult.count);
+    const deleteResult = await CarDAO.deletePhotosByIds(validIds);
+    console.log(`[POST_BULK_DELETE] Prisma delete count:`, deleteResult.count);
 
     // Physically delete files from the disk
     for (const photo of photos) {
@@ -243,16 +250,16 @@ router.delete("/photos/bulk", async (req, res, next) => {
       if (fs.existsSync(filepath)) {
         try {
           fs.unlinkSync(filepath);
-          console.log(`[DELETE_BULK] Physical file removed: ${filepath}`);
+          console.log(`[POST_BULK_DELETE] Physical file removed: ${filepath}`);
         } catch (err) {
-          console.error(`[DELETE_BULK] Failed to delete file ${filepath}:`, err.message);
+          console.error(`[POST_BULK_DELETE] Failed to delete file ${filepath}:`, err.message);
         }
       }
     }
 
     res.json({ status: 200, message: `${photos.length} photos deleted successfully.` });
   } catch (err) {
-    console.error(`[DELETE_BULK] Error:`, err.message);
+    console.error(`[POST_BULK_DELETE] Error:`, err.message);
     next(err);
   }
 });

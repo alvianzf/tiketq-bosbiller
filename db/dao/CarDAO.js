@@ -59,7 +59,11 @@ class CarDAO {
   }
 
   async deletePhoto(photoId) {
-    return prisma.carPhoto.delete({ where: { id: parseInt(photoId) } });
+    const id = parseInt(photoId);
+    if (!id || isNaN(id)) {
+      throw new Error(`Invalid photo ID: ${photoId}`);
+    }
+    return prisma.carPhoto.delete({ where: { id } });
   }
 
   async getPhotos(carId) {
