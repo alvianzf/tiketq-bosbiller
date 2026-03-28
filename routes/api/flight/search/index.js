@@ -46,8 +46,7 @@ router.post("/", async (req, res, next) => {
     const data = await fetchAirlineData(requestBodies);
 
     const returnData = {
-      rc: "00",
-      msg: "Search successful. Data fetched and cached.",
+      message: "Search successful. Data fetched and cached.",
       data,
     };
 

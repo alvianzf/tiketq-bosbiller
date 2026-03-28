@@ -35,7 +35,7 @@ const ktpUrl = (filename) => `${BASE_URL}/uploads/car-rental/${filename}`;
 router.get("/cars", async (req, res, next) => {
   try {
     const cars = await CarDAO.getAllCars(req.query);
-    res.json({ status: 200, data: cars });
+    res.json({ message: "Cars fetched successfully", data: cars });
   } catch (err) { next(err); }
 });
 
@@ -43,8 +43,8 @@ router.get("/cars", async (req, res, next) => {
 router.get("/cars/:id", async (req, res, next) => {
   try {
     const car = await CarDAO.getCarById(req.params.id);
-    if (!car) return res.status(404).json({ status: 404, message: "Car not found." });
-    res.json({ status: 200, data: car });
+    if (!car) return res.status(404).json({ message: "Car not found." });
+    res.json({ message: "Car fetched successfully", data: car });
   } catch (err) { next(err); }
 });
 
@@ -53,10 +53,10 @@ router.post("/cars", async (req, res, next) => {
   try {
     const { name, type, rows, pricePerDay, transmission, description, features } = req.body;
     if (!name || !type || !rows || !pricePerDay) {
-      return res.status(400).json({ status: 400, message: "name, type, rows, and pricePerDay are required." });
+      return res.status(400).json({ message: "name, type, rows, and pricePerDay are required." });
     }
     const car = await CarDAO.createCar({ name, type, rows, pricePerDay, transmission, description, features });
-    res.status(201).json({ status: 201, data: car });
+    res.status(201).json({ message: "Car created successfully", data: car });
   } catch (err) { next(err); }
 });
 
@@ -64,7 +64,7 @@ router.post("/cars", async (req, res, next) => {
 router.put("/cars/:id", async (req, res, next) => {
   try {
     const car = await CarDAO.updateCar(req.params.id, req.body);
-    res.json({ status: 200, data: car });
+    res.json({ message: "Car updated successfully", data: car });
   } catch (err) { next(err); }
 });
 
@@ -72,7 +72,7 @@ router.put("/cars/:id", async (req, res, next) => {
 router.delete("/cars/:id", async (req, res, next) => {
   try {
     await CarDAO.deleteCar(req.params.id);
-    res.json({ status: 200, message: "Car deleted." });
+    res.json({ message: "Car deleted successfully" });
   } catch (err) { next(err); }
 });
 
@@ -132,7 +132,7 @@ router.get("/types", async (req, res, next) => {
   try {
     const cars = await CarDAO.getAllCars();
     const types = [...new Set(cars.map((c) => c.type))];
-    res.json({ status: 200, data: types });
+    res.json({ message: "Car types fetched successfully", data: types });
   } catch (err) { next(err); }
 });
 

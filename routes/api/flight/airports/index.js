@@ -67,14 +67,21 @@ async function getCachedData() {
  */
 async function fetchAndProcessAirportsData() {
   const requestData = { f: "airports" };
-  const airports = await apiService.fetchData(requestData);
+  const airportsResponse = await apiService.fetchData(requestData);
 
+  const airports = airportsResponse.data;
   if (!airports || !Array.isArray(airports)) {
-    console.warn("Unexpected Flight API response structure for airports (expected array):", JSON.stringify(airports));
-    return Array.isArray(airports) ? airports : [];
+    console.warn("Unexpected Flight API response structure for airports (expected array in .data):", JSON.stringify(airportsResponse));
+    return {
+      message: airportsResponse.message || "Invalid data structure",
+      data: Array.isArray(airports) ? airports : []
+    };
   }
 
-  return sortAirports(airports);
+  return {
+    message: airportsResponse.message || "sukses",
+    data: sortAirports(airports)
+  };
 }
 
 /**
