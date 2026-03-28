@@ -51,7 +51,16 @@ const uploadKtp = multer({
 });
 
 // ── Helper ────────────────────────────────────────────────────────────────────
-const getBaseUrl = (req) => process.env.API_BASE_URL || `${req.protocol}://${req.get("host")}`;
+const getBaseUrl = (req) => {
+  if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+  const host = req.get("host");
+  // If we're not on localhost, we should prefer https to avoid mixed content
+  if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
+    return `https://${host}`;
+  }
+  return `${protocol}://${host}`;
+};
 const carPhotoUrl = (req, filename) => `${getBaseUrl(req)}/uploads/cars/${filename}`;
 const ktpUrl = (req, filename) => `${getBaseUrl(req)}/uploads/car-rental/${filename}`;
 
