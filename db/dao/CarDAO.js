@@ -68,9 +68,33 @@ class CarDAO {
 
   // ── Rental Requests ───────────────────────────────────────
   async createRentalRequest({ carId, date, fullName, phone, email, ktpImage, ktpSelfie }) {
+    const car = await this.getCarById(carId);
+    const totalSales = car ? car.pricePerDay : 0;
+    
     return prisma.carRentalRequest.create({
-      data: { carId: parseInt(carId), date, fullName, phone, email, ktpImage, ktpSelfie, status: "PENDING_REVIEW" },
-      include: { car: true },
+      data: { 
+        carId: parseInt(carId), 
+        date, 
+        fullName, 
+        phone, 
+        email, 
+        ktpImage, 
+        ktpSelfie, 
+        status: "PENDING_REVIEW",
+        transaction: {
+          create: {
+            serviceType: "CAR_RENTAL",
+            bookingCode: `CAR-${Date.now()}`,
+            email,
+            basePrice: totalSales,
+            serviceFee: 0,
+            totalSales: totalSales,
+            status: "PENDING",
+            payment_status: false,
+          }
+        }
+      },
+      include: { car: true, transaction: true },
     });
   }
 

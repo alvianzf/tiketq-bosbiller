@@ -13,6 +13,7 @@ const domains = {
   "car-rental": require("./car-rental"),
   proxy: require("./proxy"),
   health: require("./health"),
+  admin: require("./admin"),
 };
 
 /**
