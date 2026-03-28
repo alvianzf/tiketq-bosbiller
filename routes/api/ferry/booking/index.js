@@ -61,7 +61,7 @@ router.post("/:id/details", async (req, res, next) => {
 });
 
 router.post("/submit", async (req, res, next) => {
-  const requiredFields = ["id", "emailConfirmation", "remarks"];
+  const requiredFields = ["id", "emailConfirmation"];
   if (!validateFields(requiredFields, req.body, res)) return;
 
   try {
