@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { prisma } = require("../../../db/index");
+const UserDAO = require("../../../db/dao/UserDAO");
+const authMiddleware = require("../../../middleware/authMiddleware");
+const adminMiddleware = require("../../../middleware/adminMiddleware");
 
 // GET /api/admin/transactions - Get all transactions
 router.get("/transactions", async (req, res, next) => {
@@ -122,6 +125,63 @@ router.get("/health", async (req, res, next) => {
           uptime: "12d 4h 22m"
         }
       }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- User Management ---
+router.use("/users", authMiddleware, adminMiddleware);
+
+// GET /api/admin/users - Get all users
+router.get("/users", async (req, res, next) => {
+  try {
+    const users = await UserDAO.findAllUsers();
+    res.json({
+      message: "Users fetched successfully",
+      data: users
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/users/register - Create new admin
+router.post("/users/register", async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const user = await UserDAO.register(username, password, true);
+    res.status(201).json({
+      message: "Administrator created successfully",
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/users/:id - Update user
+router.put("/users/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updatedUser = await UserDAO.updateUser(id, req.body);
+    res.json({
+      message: "User updated successfully",
+      data: updatedUser
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/users/:id - Delete user
+router.delete("/users/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await UserDAO.deleteUser(id);
+    res.json({
+      message: "User deleted successfully"
     });
   } catch (err) {
     next(err);
