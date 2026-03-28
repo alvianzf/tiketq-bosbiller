@@ -16,12 +16,13 @@ const app = express();
 
 // Enable CORS
 const allowedOrigins = [
-  "http://117.102.64.238:1212",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://tiketq.com",
-  "http://129.226.155.85:3001",
-  "http://129.226.155.85:3000",
+  // "http://117.102.64.238:1212",
+  // "http://localhost:3000",
+  // "http://localhost:3001",
+  // "https://tiketq.com",
+  // "http://129.226.155.85:3001",
+  // "http://129.226.155.85:3000",
+  "*",
 ];
 
 app.use(
