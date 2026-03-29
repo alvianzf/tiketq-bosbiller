@@ -83,6 +83,50 @@ router.get("/file", async (req, res, next) => {
   }
 });
 
+// POST /api/admin/server/file/save
+router.post("/file/save", async (req, res, next) => {
+  try {
+    const { path, content } = req.body;
+    const targetPath = resolvePath(path);
+    await fs.writeFile(targetPath, content, "utf-8");
+    res.json({ message: "File saved successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/server/file/move
+router.post("/file/move", async (req, res, next) => {
+  try {
+    const { oldPath, newPath } = req.body;
+    const targetOld = resolvePath(oldPath);
+    const targetNew = resolvePath(newPath);
+    await fs.move(targetOld, targetNew, { overwrite: false });
+    res.json({ message: "Item moved successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/server/file
+router.delete("/file", async (req, res, next) => {
+  try {
+    const { path } = req.query;
+    const targetPath = resolvePath(path);
+    const stats = await fs.stat(targetPath);
+    
+    if (stats.isDirectory()) {
+      await fs.remove(targetPath); // Use fs-extra's remove for directories
+    } else {
+      await fs.unlink(targetPath);
+    }
+    
+    res.json({ message: "Item deleted successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/server/pm2
 router.get("/pm2", async (req, res, next) => {
   try {
