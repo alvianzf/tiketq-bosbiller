@@ -40,9 +40,28 @@ class CarDAO {
     if (pricingDuration !== undefined) data.pricingDuration = pricingDuration;
     if (transmission !== undefined) data.transmission = transmission;
     if (description !== undefined) data.description = description;
-    if (features !== undefined) data.features = Array.isArray(features) ? features : JSON.parse(features);
+
+    if (features !== undefined) {
+      if (Array.isArray(features)) {
+        data.features = features;
+      } else {
+        try {
+          data.features = JSON.parse(features);
+        } catch (e) {
+          data.features = [];
+        }
+      }
+    }
+
     if (available !== undefined) data.available = available === true || available === "true";
-    return prisma.car.update({ where: { id: parseInt(id) }, data, include: { photos: true } });
+    
+    console.log(`[CarDAO] Updating car ${id} with data:`, JSON.stringify(data, null, 2));
+    
+    return prisma.car.update({ 
+      where: { id: parseInt(id) }, 
+      data, 
+      include: { photos: true } 
+    });
   }
 
   async deleteCar(id) {
