@@ -24,7 +24,7 @@ const ALLOWED_COMMANDS = {
   "prisma-migrate": "npx prisma migrate deploy",
   "prisma-push": "npx prisma db push",
   "git-clone": "git clone",
-  "raw": "" // Custom command placeholder
+  "raw": "DIRECT_EXEC" // Changed from "" to a truthy value
 };
 
 // Middleware: Admin Only
