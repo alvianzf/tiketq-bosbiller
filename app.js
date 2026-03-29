@@ -14,39 +14,27 @@ const getFerryToken = require("./utils/node-cache");
 
 const app = express();
 
-// Enable CORS
-const allowedOrigins = [
-  "http://117.102.64.238:1212",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://tiketq.com",
-  "https://dashboard.tiketq.com",
-  "http://129.226.155.85:3001",
-  "http://129.226.155.85:3000",
-  "http://129.226.155.85:3002",
-  // "*",
-];
-
+// Enable CORS - Moved to Top - DYNAMIC ORIGIN
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
+      // Allow requests with no origin (like mobile apps)
       if (!origin) return callback(null, true);
 
-      const tiketqRegex = /^https?:\/\/(?:[a-z0-9-]+\.)?tiketq\.com$/i;
-      const isAllowedBase = allowedOrigins.includes(origin);
-      const isTiketQOwned = tiketqRegex.test(origin);
+      // Allow any subdomain of tiketq.com OR localhost
+      const isTiketQ = /^https?:\/\/(?:[a-z0-9-]+\.)?tiketq\.com$/i.test(origin);
+      const isLocal = /^https?:\/\/localhost(:\d+)?$/i.test(origin);
 
-      if (isAllowedBase || isTiketQOwned) {
+      if (isTiketQ || isLocal) {
         callback(null, true);
       } else {
-        console.warn(`CORS blocked for origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    optionsSuccessStatus: 200,
   }),
 );
 
