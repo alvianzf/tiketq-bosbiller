@@ -30,19 +30,23 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
+      const tiketqRegex = /^https?:\/\/(?:[a-z0-9-]+\.)?tiketq\.com$/i;
       const isAllowedBase = allowedOrigins.includes(origin);
-      const isTiketQSubdomain =
-        origin.endsWith(".tiketq.com") || origin === "https://tiketq.com";
+      const isTiketQOwned = tiketqRegex.test(origin);
 
-      if (isAllowedBase || isTiketQSubdomain) {
+      if (isAllowedBase || isTiketQOwned) {
         callback(null, true);
       } else {
+        console.warn(`CORS blocked for origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   }),
 );
 
