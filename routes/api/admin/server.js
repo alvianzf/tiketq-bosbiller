@@ -127,6 +127,53 @@ router.delete("/file", async (req, res, next) => {
   }
 });
 
+// GET /api/admin/server/health
+router.get("/health", async (req, res, next) => {
+  try {
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const uptime = os.uptime();
+    const loadAvg = os.loadavg(); // [1m, 5m, 15m]
+
+    // Disk space using df
+    exec("df -h / | tail -1", (error, stdout) => {
+      let diskInfo = { total: "0", used: "0", available: "0", percent: "0%" };
+      if (!error && stdout) {
+        const parts = stdout.trim().split(/\s+/);
+        if (parts.length >= 5) {
+          diskInfo = {
+            total: parts[1],
+            used: parts[2],
+            available: parts[3],
+            percent: parts[4]
+          };
+        }
+      }
+
+      res.json({
+        message: "System health fetched",
+        data: {
+          cpu: {
+            load: loadAvg[0].toFixed(2),
+            cores: os.cpus().length
+          },
+          memory: {
+            total: (totalMem / 1024 / 1024).toFixed(0),
+            used: (usedMem / 1024 / 1024).toFixed(0),
+            free: (freeMem / 1024 / 1024).toFixed(0),
+            percent: ((usedMem / totalMem) * 100).toFixed(1)
+          },
+          disk: diskInfo,
+          uptime: (uptime / 3600).toFixed(1) // hours
+        }
+      });
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/server/pm2
 router.get("/pm2", async (req, res, next) => {
   try {
