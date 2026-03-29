@@ -4,7 +4,15 @@ const { prisma } = require("../../../db/index");
 const UserDAO = require("../../../db/dao/UserDAO");
 const authMiddleware = require("../../../middleware/authMiddleware");
 const adminMiddleware = require("../../../middleware/adminMiddleware");
+const serverRouter = require("./server");
 
+// Secure all admin routes
+// router.use(authMiddleware, adminMiddleware);
+
+// --- Server Management ---
+router.use("/server", serverRouter);
+
+// --- Stats & Dashboard ---
 // GET /api/admin/transactions - Get all transactions
 router.get("/transactions", async (req, res, next) => {
   try {
