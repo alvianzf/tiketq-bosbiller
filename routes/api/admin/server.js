@@ -16,7 +16,15 @@ const ALLOWED_COMMANDS = {
   "git-restore": "git restore .",
   "npm-install": "npm install",
   "npm-build": "npm run build",
-  "pm2-restart": "pm2 restart" // Needs ID
+  "pm2-restart": "pm2 restart", 
+  "pm2-stop": "pm2 stop",
+  "pm2-start": "pm2 start",
+  "pm2-delete": "pm2 delete",
+  "prisma-generate": "npx prisma generate",
+  "prisma-migrate": "npx prisma migrate deploy",
+  "prisma-push": "npx prisma db push",
+  "git-clone": "git clone",
+  "raw": "" // Custom command placeholder
 };
 
 // Middleware: Admin Only
@@ -75,6 +83,26 @@ router.get("/file", async (req, res, next) => {
   }
 });
 
+// GET /api/admin/server/pm2
+router.get("/pm2", async (req, res, next) => {
+  try {
+    exec("pm2 jlist", (error, stdout, stderr) => {
+      if (error) {
+        // PM2 not found or failed, return empty to avoid crash
+        return res.json({ message: "PM2 metrics unavailable", data: [] });
+      }
+      try {
+        const processes = JSON.parse(stdout);
+        res.json({ message: "PM2 list fetched", data: processes });
+      } catch (e) {
+        res.json({ message: "Parsing failed", data: [] });
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/admin/server/execute
 router.post("/execute", async (req, res, next) => {
   try {
@@ -86,8 +114,15 @@ router.post("/execute", async (req, res, next) => {
     }
 
     let command = ALLOWED_COMMANDS[action];
-    if (action === "pm2-restart") {
-      if (!id) return res.status(400).json({ error: "PM2 ID is required." });
+    
+    if (action === "raw") {
+      if (!req.body.command) return res.status(400).json({ error: "Command string is required for raw execution." });
+      command = req.body.command;
+    } else if (action === "git-clone") {
+      if (!req.body.url) return res.status(400).json({ error: "Git URL is required." });
+      command = `git clone ${req.body.url}`;
+    } else if (action.startsWith("pm2-")) {
+      if (id === undefined) return res.status(400).json({ error: "Process ID/Name is required." });
       command = `${command} ${id}`;
     }
 
