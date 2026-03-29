@@ -2,7 +2,6 @@ const express = require("express");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
-const cors = require("cors");
 const { notFoundHandler, errorHandler } = require("./middleware/error-handler");
 const connectDB = require("./db");
 const routes = require("./routes");
@@ -13,20 +12,6 @@ const swaggerDocument = YAML.load("./swagger.yaml");
 const getFerryToken = require("./utils/node-cache");
 
 const app = express();
-
-// Enable CORS - Moved to Top - DYNAMIC ORIGIN
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  res.header("Access-Control-Allow-Origin", origin || "*");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept");
-  
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-  next();
-});
 
 // Middleware
 app.use(logger("dev"));
