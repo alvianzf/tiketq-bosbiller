@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const fs = require("fs").promises;
+const fs = require("fs-extra");
 const path = require("path");
 const { exec } = require("child_process");
+const os = require("os");
 const authMiddleware = require("../../../middleware/authMiddleware");
 const adminMiddleware = require("../../../middleware/adminMiddleware");
 
