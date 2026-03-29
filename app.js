@@ -17,20 +17,7 @@ const app = express();
 // Enable CORS - Moved to Top - DYNAMIC ORIGIN
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps)
-      if (!origin) return callback(null, true);
-
-      // Allow any subdomain of tiketq.com OR localhost
-      const isTiketQ = /^https?:\/\/(?:[a-z0-9-]+\.)?tiketq\.com$/i.test(origin);
-      const isLocal = /^https?:\/\/localhost(:\d+)?$/i.test(origin);
-
-      if (isTiketQ || isLocal) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: true, // Universal origin mirroring (mirrors the incoming request origin)
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
