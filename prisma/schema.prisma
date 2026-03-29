@@ -133,15 +133,16 @@ model Terminal {
 }
 
 model Car {
-  id           Int        @id @default(autoincrement())
-  name         String
-  type         String
-  rows         Int
-  pricePerDay  Decimal
-  transmission String?
-  description  String?
-  features     String[]
-  available    Boolean    @default(true)
+  id              Int        @id @default(autoincrement())
+  name            String
+  type            String
+  rows            Int
+  pricePerDay     Decimal
+  pricingDuration String?    @default("hari")
+  transmission    String?
+  description     String?
+  features        String[]
+  available       Boolean    @default(true)
   photos       CarPhoto[]
   rentals      CarRentalRequest[]
   createdAt    DateTime   @default(now())
@@ -167,6 +168,7 @@ model CarRentalRequest {
   car        Car      @relation(fields: [carId], references: [id])
   carId      Int
   date       String
+  rentalDays Int?     @default(1)
   fullName   String
   phone      String
   email      String

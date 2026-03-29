@@ -14,13 +14,14 @@ class CarDAO {
     return prisma.car.findUnique({ where: { id: parseInt(id) }, include: { photos: true } });
   }
 
-  async createCar({ name, type, rows, pricePerDay, transmission, description, features }) {
+  async createCar({ name, type, rows, pricePerDay, pricingDuration, transmission, description, features }) {
     return prisma.car.create({
       data: {
         name,
         type,
         rows: parseInt(rows),
         pricePerDay: parseFloat(pricePerDay),
+        pricingDuration: pricingDuration || "Hari",
         transmission,
         description,
         features: features ?? [],
@@ -30,12 +31,13 @@ class CarDAO {
     });
   }
 
-  async updateCar(id, { name, type, rows, pricePerDay, transmission, description, features, available }) {
+  async updateCar(id, { name, type, rows, pricePerDay, pricingDuration, transmission, description, features, available }) {
     const data = {};
     if (name !== undefined) data.name = name;
     if (type !== undefined) data.type = type;
     if (rows !== undefined) data.rows = parseInt(rows);
     if (pricePerDay !== undefined) data.pricePerDay = parseFloat(pricePerDay);
+    if (pricingDuration !== undefined) data.pricingDuration = pricingDuration;
     if (transmission !== undefined) data.transmission = transmission;
     if (description !== undefined) data.description = description;
     if (features !== undefined) data.features = Array.isArray(features) ? features : JSON.parse(features);
@@ -79,14 +81,16 @@ class CarDAO {
   }
 
   // ── Rental Requests ───────────────────────────────────────
-  async createRentalRequest({ carId, date, fullName, phone, email, ktpImage, ktpSelfie }) {
+  async createRentalRequest({ carId, date, rentalDays, fullName, phone, email, ktpImage, ktpSelfie }) {
     const car = await this.getCarById(carId);
-    const totalSales = car ? car.pricePerDay : 0;
+    const days = parseInt(rentalDays) || 1;
+    const totalSales = car ? parseFloat(car.pricePerDay) * days : 0;
     
     return prisma.carRentalRequest.create({
       data: { 
         carId: parseInt(carId), 
         date, 
+        rentalDays: days,
         fullName, 
         phone, 
         email, 

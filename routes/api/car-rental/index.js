@@ -95,6 +95,7 @@ router.post("/cars", async (req, res, next) => {
       type,
       rows,
       pricePerDay,
+      pricingDuration,
       transmission,
       description,
       features,
@@ -109,6 +110,7 @@ router.post("/cars", async (req, res, next) => {
       type,
       rows,
       pricePerDay,
+      pricingDuration,
       transmission,
       description,
       features,
@@ -307,7 +309,7 @@ router.post(
   ]),
   async (req, res, next) => {
     try {
-      const { carId, date, fullName, phone, email } = req.body;
+      const { carId, date, rentalDays, fullName, phone, email } = req.body;
       const files = req.files;
       if (!carId || !fullName || !phone || !email) {
         return res
@@ -325,6 +327,7 @@ router.post(
       const rental = await CarDAO.createRentalRequest({
         carId,
         date,
+        rentalDays,
         fullName,
         phone,
         email,
