@@ -190,6 +190,91 @@ router.get("/health", async (req, res, next) => {
   }
 });
 
+// GET /api/admin/upcoming-schedules - Next 7 Days Confirmed Bookings
+router.get("/upcoming-schedules", async (req, res, next) => {
+  try {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const in7Days = new Date(today);
+    in7Days.setDate(today.getDate() + 8); // Include full 7th day
+
+    // 1. Flights
+    const flightsRaw = await prisma.flightBooking.findMany({
+      where: { payment_status: true },
+      include: { passengers: true }
+    });
+
+    // 2. Ferries
+    const ferriesRaw = await prisma.ferryBooking.findMany({
+      where: { payment_status: true },
+      include: { passengers: true, origin: true, destination: true }
+    });
+
+    // 3. Car Rentals
+    const carsRaw = await prisma.carRentalRequest.findMany({
+      where: { status: { in: ["APPROVED", "PENDING_REVIEW"] } }, // Include pending for admin visibility
+      include: { car: true, transaction: true }
+    });
+
+    const schedules = [];
+
+    flightsRaw.forEach(f => {
+      if(!f.departureDate) return;
+      const d = new Date(f.departureDate); 
+      if (d >= today && d <= in7Days) {
+        schedules.push({
+          id: `FLIGHT-${f.id}`,
+          type: "FLIGHT",
+          productName: "Flight Ticket",
+          date: f.departureDate,
+          rawDate: d,
+          customerName: f.name || (f.passengers[0] && `${f.passengers[0].firstName} ${f.passengers[0].lastName}`) || "-",
+          detail: `${f.origin} ➔ ${f.destination}`
+        });
+      }
+    });
+
+    ferriesRaw.forEach(f => {
+      if(!f.departureDate) return;
+      const d = new Date(f.departureDate);
+      if (d >= today && d <= in7Days) {
+        schedules.push({
+          id: `FERRY-${f.id}`,
+          type: "FERRY",
+          productName: "Ferry Ticket",
+          date: d.toISOString().split("T")[0],
+          rawDate: d,
+          customerName: f.passengers[0] ? `${f.passengers[0].firstName} ${f.passengers[0].lastName}` : "-",
+          detail: `${f.origin?.name || '-'} ➔ ${f.destination?.name || '-'}`
+        });
+      }
+    });
+
+    carsRaw.forEach(c => {
+      if(!c.date) return;
+      const d = new Date(c.date);
+      if (d >= today && d <= in7Days) {
+        schedules.push({
+          id: `CAR-${c.id}`,
+          type: "CAR",
+          productName: c.car?.name || "Car Rental",
+          date: c.date,
+          rawDate: d,
+          customerName: c.fullName || "-",
+          detail: `${c.rentalDays} ${c.car?.pricingDuration || 'Hari'}, ${c.car?.type || ''}`
+        });
+      }
+    });
+
+    schedules.sort((a,b) => a.rawDate - b.rawDate);
+    schedules.forEach(s => delete s.rawDate);
+
+    res.json({ message: "Upcoming schedules fetched", data: schedules });
+  } catch(err) {
+    next(err);
+  }
+});
+
 // --- User Management ---
 router.use("/users", authMiddleware, adminMiddleware);
 
