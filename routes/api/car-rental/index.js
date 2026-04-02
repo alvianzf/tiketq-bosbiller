@@ -145,7 +145,7 @@ router.delete("/cars/:id", async (req, res, next) => {
     for (const photo of photos) {
       const filepath = path.join(
         __dirname,
-        "../../../../uploads/cars",
+        "../../../uploads/cars",
         photo.filename,
       );
       if (fs.existsSync(filepath)) {
