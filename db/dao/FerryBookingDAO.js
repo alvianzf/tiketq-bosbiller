@@ -94,7 +94,22 @@ class FerryBookingDAO {
   async updatePaymentStatusByNo(bookingNo, payment_status) {
     return await prisma.ferryBooking.update({
       where: { bookingNo },
-      data: { payment_status, status: payment_status ? "PAID" : "PENDING" },
+      data: { 
+        payment_status, 
+        status: payment_status ? "PAID" : "PENDING",
+        transaction: {
+          update: {
+            payment_status,
+            status: payment_status ? "PAID" : "PENDING"
+          }
+        }
+      },
+      include: {
+        passengers: true,
+        origin: true,
+        destination: true,
+        transaction: true,
+      },
     });
   }
 
@@ -113,6 +128,13 @@ class FerryBookingDAO {
       where: { code },
       update: { name, city, country },
       create: { code, name, city, country },
+    });
+  }
+
+  async updatePassengerVoucher(passengerId, voucherCodeId) {
+    return await prisma.passenger.update({
+      where: { id: passengerId },
+      data: { voucherCodeId }
     });
   }
 }

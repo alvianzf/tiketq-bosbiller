@@ -47,6 +47,8 @@ async function generateInvoicePDF(bookingData) {
       const headerY = 40;
       doc.rect(40, headerY, 4, 35).fill(primaryColor);
       doc.fillColor(darkColor).fontSize(12).font('Helvetica-Bold').text('RECEIPT', 55, headerY);
+      const bookingNo = bookingData.bookingNo || bookingData.bookingCode || 'SF-987654';
+
       doc.fillColor(darkColor).fontSize(9).font('Helvetica')
          .text(`Number : #${bookingData.id}`, 55, headerY + 15)
          .text(`Date : ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`, 55, headerY + 25);
@@ -69,7 +71,7 @@ async function generateInvoicePDF(bookingData) {
       
       currentY += 30;
       doc.fillColor(darkColor).fontSize(9).font('Helvetica');
-      doc.text(`P.O. NUMBER: ${bookingData.bookingCode}`, 50, currentY);
+      doc.text(`P.O. NUMBER: ${bookingNo}`, 50, currentY);
       doc.text(`METHOD: Online Payment`, 250, currentY);
       doc.text(`STATUS: Paid`, 450, currentY);
 
@@ -84,10 +86,17 @@ async function generateInvoicePDF(bookingData) {
       const col1LabelW = 80;
       const col1ValueX = col1X + col1LabelW;
 
+      // Extract details
+      const passengersList = bookingData.passengers && bookingData.passengers.length > 0 
+        ? bookingData.passengers 
+        : [{ title: '', firstName: 'VALUED', lastName: 'CUSTOMER' }];
+
+      const customerName = bookingData.name || `${passengersList[0].firstName || ''} ${passengersList[0].lastName || ''}`.trim() || 'Valued Customer';
+
       doc.font('Helvetica');
       // Customer
-      doc.text('Name', col1X, currentY).text(`: ${bookingData.name}`, col1ValueX, currentY);
-      doc.text('Email', col1X, currentY + 12).text(`: ${bookingData.email}`, col1ValueX, currentY + 12);
+      doc.text('Name', col1X, currentY).text(`: ${customerName}`, col1ValueX, currentY);
+      doc.text('Email', col1X, currentY + 12).text(`: ${bookingData.email || 'customer@tiketq.com'}`, col1ValueX, currentY + 12);
 
       // ==========================================
       // PASSENGER DETAILS
@@ -98,7 +107,6 @@ async function generateInvoicePDF(bookingData) {
       currentY += 30;
       doc.font('Helvetica-Bold').fontSize(9);
       
-      const passengersList = bookingData.passengers && bookingData.passengers.length > 0 ? bookingData.passengers : [{ title: '', firstName: bookingData.name, lastName: '' }];
       const passengerNames = passengersList.map(p => `${(p.title || '').toUpperCase()} ${(p.firstName || p.first_name || '').toUpperCase()} ${(p.lastName || p.last_name || '').toUpperCase()} (Adult)`).join(' | ');
       
       doc.text(passengerNames, 50, currentY, { width: doc.page.width - 100 });
@@ -150,14 +158,31 @@ async function generateInvoicePDF(bookingData) {
       const taxAmount = totalAmount - baseFare;
       const unitPrice = Math.round(baseFare / passCount);
 
-      // Row 1: Flight Ticket
+      // Determine flight vs ferry
+      const isFerry = bookingData.bookingNo || bookingData.serviceType === "FERRY" || (bookingData.origin && typeof bookingData.origin === 'object');
+      const itemType = isFerry ? 'Ferry Ticket' : 'Flight Ticket';
+      
+      let originStr = "";
+      if (bookingData.origin) {
+        originStr = typeof bookingData.origin === 'object' ? (bookingData.origin.name || bookingData.origin.code) : bookingData.origin;
+      }
+      let destStr = "";
+      if (bookingData.destination) {
+        destStr = typeof bookingData.destination === 'object' ? (bookingData.destination.name || bookingData.destination.code) : bookingData.destination;
+      }
+      
+      const itemDesc = isFerry 
+        ? `Ferry (Adult) ${originStr} - ${destStr} | ${new Date(bookingData.departureDate).toLocaleDateString('en-GB')}`
+        : `Flight (Adult) ${bookingData.origin} - ${bookingData.destination} | ${new Date(bookingData.departureDate).toLocaleDateString('en-GB')}`;
+
+      // Row 1: Ticket
       drawTableRow(currentY, 40);
       doc.font('Helvetica').fontSize(9);
       doc.text('1', c1 + 5, currentY + 10);
-      doc.font('Helvetica-Bold').text('Flight Ticket', c2 + 5, currentY + 10);
+      doc.font('Helvetica-Bold').text(itemType, c2 + 5, currentY + 10);
       
       doc.font('Helvetica');
-      doc.text(`Flight (Adult) ${bookingData.origin} - ${bookingData.destination} | ${new Date(bookingData.departureDate).toLocaleDateString('en-GB')}`, c3 + 5, currentY + 10, { width: 190 });
+      doc.text(itemDesc, c3 + 5, currentY + 10, { width: 190 });
       
       doc.text(passCount.toString(), c4 + 5, currentY + 10, { width: 20, align: 'right' });
       doc.text(formatCurrency(unitPrice), c5 + 5, currentY + 10, { width: 60, align: 'right' });

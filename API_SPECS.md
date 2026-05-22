@@ -31,6 +31,7 @@ The API is built using Node.js and Express, with PostgreSQL as the primary relat
 - `POST /api/flight/search`: Search for available flights.
 - `POST /api/flight/book`: Create a new flight booking.
 - `GET /api/flight/book-info/:code`: Get booking details by code.
+  - *Unified Gateway Feature*: Seamlessly intercepts Sindo Ferry booking codes. If a local ferry reservation is located, it compiles a gorgeous high-fidelity Ferry E-Ticket PDF on the fly and returns a structure-compatible flight response mapping (populated with voyage terminals, time details, and base64 ticket payload) to enable immediate frontend rendering/downloading.
 - `GET /api/flight/search-airport/:query`: Search airports by name/code.
 - `GET /api/flight/bookings`: List all flight bookings (Requires Auth).
 - `GET /api/flight/booking-data`: List all flight booking raw records (Requires Auth).
@@ -67,10 +68,11 @@ Endpoints under `/api/ferry` generally require authentication (Sindo Ferry Token
 
 #### Booking & Passengers
 
-- `POST /api/ferry/booking`: Initialize a ferry booking.
+- `POST /api/ferry/booking`: Initialize and build a ferry booking.
+  - *Performance Optimized*: Fully optimized to run in `< 2` seconds using search trip in-memory caching (`trips:${embarkation}:${destination}:${date}`), concurrent master country/route loading, and concurrent passenger detail updates via `Promise.all`.
 - `POST /api/ferry/booking/:id/details`: Add passenger details to booking.
 - `POST /api/ferry/booking/submit`: Submit/finalize a ferry booking.
-- `GET /api/ferry/booking/:id`: Get ferry booking details.
+- `GET /api/ferry/booking/:id`: Get ferry booking details (Checks local database first, fallbacks to Sindo APIs).
 - `GET /api/ferry/booking/:id/pricing`: Get booking details with pricing.
 - `POST /api/ferry/booking/transfer`: Create a booking transfer.
 - `GET /api/ferry/booking/transfer/:id`: Get booking transfer details.

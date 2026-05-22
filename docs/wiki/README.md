@@ -6,6 +6,8 @@ Welcome to the internal documentation for the **TiketQ Bosbiller** project. This
 
 - [🏗️ Architecture & Tech Stack](./architecture.md)
   Overview of the system design, directory structure, and technology stack.
+- [🔄 Booking Dataflow](./dataflow.md)
+  Detailed description and flowcharts of Flight and Ferry booking transactional dataflows.
 - [⚙️ Getting Started](./setup.md)
   Instructions for local environment setup, configuration, and database initialization.
 - [🗄️ Database Schema](./database.md)

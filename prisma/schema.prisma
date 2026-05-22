@@ -99,6 +99,7 @@ model Passenger {
   dateOfBirth     DateTime?
   flightBookingId Int?
   ferryBookingId  Int?
+  voucherCodeId   String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   ferryBooking    FerryBooking?  @relation(fields: [ferryBookingId], references: [id], onDelete: Cascade)

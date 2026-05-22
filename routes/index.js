@@ -23,10 +23,12 @@ router.get('/', (req, res) => {
   return res.status(401).json({ status: 401, msg: "Access to this resource is restricted. Please contact the administrator for more information." });
 });
 
+
 /**
- * Mounting the API routes at the '/api' path.
+ * Mounting the API routes at the '/api' path with rate limiting protection.
  */
-router.use('/api', require('./api'));
+const rateLimiter = require('../middleware/rate-limiter');
+router.use('/api', rateLimiter({ max: 120, windowMs: 60000 }), require('./api'));
 router.use('/hooks', require('./webhooks'));
 
 /**
