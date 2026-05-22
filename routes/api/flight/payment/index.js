@@ -36,6 +36,22 @@ router.post("/", async (req, res, next) => {
           bookingCode,
         );
       if (paid) {
+        // Generate and send E-Ticket Email asynchronously
+        try {
+          const { generateTicketPDF } = require('../../../../services/pdfService');
+          const { generateInvoicePDF } = require('../../../../services/invoiceService');
+          const { sendBookingEmail } = require('../../../../services/emailService');
+          
+          const fullBookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
+          if (fullBookings && fullBookings.length > 0) {
+            const pdfBuffer = await generateTicketPDF(fullBookings[0]);
+            const invoiceBuffer = await generateInvoicePDF(fullBookings[0]);
+            await sendBookingEmail(fullBookings[0], pdfBuffer, invoiceBuffer);
+          }
+        } catch (emailErr) {
+          console.error("Failed to generate/send e-ticket from manual payment route:", emailErr);
+        }
+
         return res.status(200).json({
           status: 200,
           message: "Payment successful",

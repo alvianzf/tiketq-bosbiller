@@ -84,6 +84,7 @@ class FlightBookingDAO {
   async findBookingById(id) {
     return await prisma.flightBooking.findUnique({
       where: { id: parseInt(id) },
+      include: { passengers: true },
     });
   }
 
@@ -105,6 +106,7 @@ class FlightBookingDAO {
       where: {
         bookingCode: book_no,
       },
+      include: { passengers: true },
     });
   }
 
