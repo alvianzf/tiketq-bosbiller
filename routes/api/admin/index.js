@@ -40,6 +40,87 @@ router.get("/transactions", async (req, res, next) => {
   }
 });
 
+// Helper to prune server.log lines older than 30 days
+const pruneLogFile = async (logPath) => {
+  const fs = require("fs-extra");
+  try {
+    if (!(await fs.exists(logPath))) return;
+    const content = await fs.readFile(logPath, "utf-8");
+    const lines = content.split("\n");
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    
+    const preservedLines = [];
+    for (const line of lines) {
+      const match = line.match(/\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})/);
+      if (match) {
+        const lineTime = new Date(match[1]).getTime();
+        if (!isNaN(lineTime) && lineTime < thirtyDaysAgo) {
+          continue; // Discard line older than 30 days
+        }
+      }
+      preservedLines.push(line);
+    }
+    
+    await fs.writeFile(logPath, preservedLines.join("\n"), "utf-8");
+  } catch (err) {
+    console.error("Failed to prune log file:", err.message);
+  }
+};
+
+// GET /api/admin/logs - Fetch application and transaction audit logs (30 days persistence)
+router.get("/logs", async (req, res, next) => {
+  const fs = require("fs-extra");
+  const path = require("path");
+  try {
+    const logPath = path.resolve(__dirname, "../../../server.log");
+    
+    // Prune the log file to enforce 30-day persistence limit
+    await pruneLogFile(logPath);
+
+    let fileLogs = "";
+    if (await fs.exists(logPath)) {
+      fileLogs = await fs.readFile(logPath, "utf-8");
+    } else {
+      fileLogs = "No process logs found.";
+    }
+
+    // Fetch recent transaction logs (limited to 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const txns = await prisma.transaction.findMany({
+      where: {
+        createdAt: { gte: thirtyDaysAgo }
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const auditLogs = txns.map(t => {
+      const status = t.payment_status ? "PAID" : t.status || "PENDING";
+      const user = t.email || "Guest";
+      const code = t.bookingCode || "N/A";
+      const amount = Number(t.totalSales || 0).toLocaleString('id-ID');
+      const timeStr = new Date(t.createdAt).toISOString().replace('T', ' ').substring(0, 19);
+      return `[${timeStr}] [AUDIT] [${t.serviceType}] Txn ${code} by ${user} - Status: ${status} - Gross: Rp ${amount}`;
+    });
+
+    const combinedLogs = [
+      "=== SYSTEM BOOT & SERVER PROCESS LOGS (30-DAY RETENTION) ===",
+      fileLogs.trim(),
+      "",
+      "=== TRANSACTION EVENT AUDIT STREAM (30-DAY RETENTION) ===",
+      auditLogs.length > 0 ? auditLogs.join("\n") : "[No transaction history found within the last 30 days]"
+    ].join("\n");
+
+    res.json({
+      message: "Logs fetched successfully",
+      data: combinedLogs
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/stats - Get dashboard statistics
 router.get("/stats", async (req, res, next) => {
   try {
