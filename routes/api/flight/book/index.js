@@ -7,6 +7,14 @@ router.post("/", async (req, res, next) => {
   const requestData = req.body;
   requestData.f = "book";
 
+  // Fail-safe normalization for any client bundles sending 'childrens' instead of 'children' in passenger details
+  if (requestData.passengers) {
+    if (requestData.passengers.childrens && !requestData.passengers.children) {
+      requestData.passengers.children = requestData.passengers.childrens;
+      delete requestData.passengers.childrens;
+    }
+  }
+
   try {
     const result = await apiService.fetchData(requestData);
 
