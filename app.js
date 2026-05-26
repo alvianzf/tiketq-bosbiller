@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
+const cors = require("cors");
 const { notFoundHandler, errorHandler } = require("./middleware/error-handler");
 const connectDB = require("./db");
 const routes = require("./routes");
@@ -15,6 +16,25 @@ const app = express();
 
 // Middleware
 app.use(logger("dev"));
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    const allowed = [
+      /^https?:\/\/(.*\.)?tiketq\.com$/,
+      /^http:\/\/localhost(:\d+)?$/,
+      /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+    ];
+    if (allowed.some((pattern) => pattern.test(origin))) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(
   express.urlencoded({ extended: true, limit: "10mb", parameterLimit: 10000 }),
