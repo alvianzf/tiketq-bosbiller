@@ -2,7 +2,15 @@ const { createClient } = require("redis");
 
 const createRedisClient = async () => {
   const url = process.env.REDIS_URL || "redis://localhost:6379";
-  const client = createClient({ url });
+  const client = createClient({
+    url,
+    socket: {
+      reconnectStrategy: () => {
+        // Disable automatic reconnect retries to prevent background thread console flooding and CPU waste
+        return false;
+      }
+    }
+  });
 
   client.on("error", (err) => {
     // Log the error but don't crash; caching will just be bypassed
@@ -19,16 +27,22 @@ const createRedisClient = async () => {
   }
 };
 
-let redisClient;
+let redisClient = undefined;
 
 /**
  * Returns a singleton instance of the Redis client.
  * Lazy-loads on first call and attempts re-connection if disconnected.
  */
 const getRedisClient = async () => {
-  if (!redisClient) {
+  if (redisClient === undefined) {
     redisClient = await createRedisClient();
-    return redisClient;
+    if (!redisClient) {
+      redisClient = { isDummy: true, isOpen: false };
+    }
+  }
+
+  if (redisClient.isDummy) {
+    return null;
   }
 
   // If we have a client reference but it's not connected, try to reconnect
@@ -38,7 +52,7 @@ const getRedisClient = async () => {
       await redisClient.connect();
       return redisClient;
     } catch (err) {
-      // Reconnection failed, stay null / disconnected
+      // Reconnection failed, return null
       return null;
     }
   }

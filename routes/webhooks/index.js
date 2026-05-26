@@ -94,27 +94,49 @@ router.post('/midtrans', async (req, res, next) => {
             nominal,
           };
           
-          await apiService.fetchData(requestData).catch(e => {
-            console.error("Failed to issue ticket on provider side via webhook", e);
-          });
-          
-          // Update DB
-          await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(bookingCode);
-          console.log(`Successfully settled booking ${bookingCode}`);
-          
-          // Send E-Ticket Email asynchronously
+          let issueSuccess = false;
           try {
-            const { generateTicketPDF } = require('../../services/pdfService');
-            const { generateInvoicePDF } = require('../../services/invoiceService');
-            const { sendBookingEmail } = require('../../services/emailService');
+            const providerResult = await apiService.fetchData(requestData);
+            if (providerResult && providerResult.data && providerResult.data.rc === "00") {
+              issueSuccess = true;
+            } else {
+              console.error(`Failed to issue flight ticket on provider side via webhook (non-zero rc): ${providerResult?.data?.msg || providerResult?.message}`);
+            }
+          } catch (e) {
+            console.error("Failed to issue ticket on provider side via webhook (exception):", e.message);
+          }
+          
+          if (issueSuccess) {
+            // Update DB to PAID status
+            await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(bookingCode);
+            console.log(`Successfully settled booking ${bookingCode}`);
             
-            // Get full booking with passengers to pass to PDF generator
-            const fullBooking = await FlightBookingDAO.findBookingById(booking.id);
-            const pdfBuffer = await generateTicketPDF(fullBooking);
-            const invoiceBuffer = await generateInvoicePDF(fullBooking);
-            await sendBookingEmail(fullBooking, pdfBuffer, invoiceBuffer);
-          } catch (emailErr) {
-            console.error("Failed to generate/send e-ticket from webhook:", emailErr);
+            // Send E-Ticket Email asynchronously
+            try {
+              const { generateTicketPDF } = require('../../services/pdfService');
+              const { generateInvoicePDF } = require('../../services/invoiceService');
+              const { sendBookingEmail } = require('../../services/emailService');
+              
+              // Get full booking with passengers to pass to PDF generator
+              const fullBooking = await FlightBookingDAO.findBookingById(booking.id);
+              const pdfBuffer = await generateTicketPDF(fullBooking);
+              const invoiceBuffer = await generateInvoicePDF(fullBooking);
+              await sendBookingEmail(fullBooking, pdfBuffer, invoiceBuffer);
+            } catch (emailErr) {
+              console.error("Failed to generate/send e-ticket from webhook:", emailErr);
+            }
+          } else {
+            // Log warning and mark transaction status as TICKET_FAILED
+            console.error(`CRITICAL: Flight payment webhook received for booking ${bookingCode}, but provider ticket issuance failed! Database update aborted.`);
+            try {
+              const { prisma } = require("../../db/index");
+              await prisma.transaction.updateMany({
+                where: { bookingCode },
+                data: { status: "TICKET_FAILED" }
+              });
+            } catch (dbErr) {
+              console.error("Failed to update transaction status to TICKET_FAILED:", dbErr.message);
+            }
           }
         }
       }

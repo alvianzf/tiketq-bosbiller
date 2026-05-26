@@ -15,9 +15,16 @@ class ApiService {
       const response = await this.makeRequestWithData(data);
       // Standardize to { message, data }
       if (response && response.data) {
+        const rc = response.data.rc;
+        const msg = response.data.msg;
+        const resultData = response.data.data || response.data;
+        if (resultData && typeof resultData === 'object') {
+          if (resultData.rc === undefined && rc !== undefined) resultData.rc = rc;
+          if (resultData.msg === undefined && msg !== undefined) resultData.msg = msg;
+        }
         return {
-          message: response.data.msg || "sukses",
-          data: response.data.data || response.data
+          message: msg || "sukses",
+          data: resultData
         };
       }
       return { message: "No data received", data: null };

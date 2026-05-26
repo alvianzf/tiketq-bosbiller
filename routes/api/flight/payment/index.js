@@ -23,49 +23,55 @@ router.post("/", async (req, res, next) => {
 
   try {
     const responseData = await apiService.fetchData(requestData);
-    if (responseData === "") {
+    
+    // Check if the ticketing / payment request succeeded on the provider side
+    const isSuccess = !!(responseData && responseData.data && responseData.data.rc === "00");
+
+    if (!isSuccess) {
+      const errorMsg = responseData?.data?.msg || responseData?.message || "Failed to process flight payment on provider side.";
       return res.status(400).json({
         status: 400,
-        message: "Network error, please retry",
+        message: errorMsg,
+        bookingCode,
+        nominal,
+        details: responseData?.data || responseData
+      });
+    }
+
+    const paid =
+      await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(
+        bookingCode,
+      );
+    if (paid) {
+      // Generate and send E-Ticket Email asynchronously
+      try {
+        const { generateTicketPDF } = require('../../../../services/pdfService');
+        const { generateInvoicePDF } = require('../../../../services/invoiceService');
+        const { sendBookingEmail } = require('../../../../services/emailService');
+        
+        const fullBookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
+        if (fullBookings && fullBookings.length > 0) {
+          const pdfBuffer = await generateTicketPDF(fullBookings[0]);
+          const invoiceBuffer = await generateInvoicePDF(fullBookings[0]);
+          await sendBookingEmail(fullBookings[0], pdfBuffer, invoiceBuffer);
+        }
+      } catch (emailErr) {
+        console.error("Failed to generate/send e-ticket from manual payment route:", emailErr);
+      }
+
+      return res.status(200).json({
+        status: 200,
+        message: "Payment successful",
         bookingCode,
         nominal,
       });
     } else {
-      const paid =
-        await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(
-          bookingCode,
-        );
-      if (paid) {
-        // Generate and send E-Ticket Email asynchronously
-        try {
-          const { generateTicketPDF } = require('../../../../services/pdfService');
-          const { generateInvoicePDF } = require('../../../../services/invoiceService');
-          const { sendBookingEmail } = require('../../../../services/emailService');
-          
-          const fullBookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
-          if (fullBookings && fullBookings.length > 0) {
-            const pdfBuffer = await generateTicketPDF(fullBookings[0]);
-            const invoiceBuffer = await generateInvoicePDF(fullBookings[0]);
-            await sendBookingEmail(fullBookings[0], pdfBuffer, invoiceBuffer);
-          }
-        } catch (emailErr) {
-          console.error("Failed to generate/send e-ticket from manual payment route:", emailErr);
-        }
-
-        return res.status(200).json({
-          status: 200,
-          message: "Payment successful",
-          bookingCode,
-          nominal,
-        });
-      } else {
-        return res.status(404).json({
-          status: 404,
-          message: "Booking not found",
-          bookingCode,
-          nominal,
-        });
-      }
+      return res.status(404).json({
+        status: 404,
+        message: "Booking not found",
+        bookingCode,
+        nominal,
+      });
     }
   } catch (error) {
     next(error);
