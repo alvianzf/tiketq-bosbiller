@@ -78,7 +78,14 @@ router.post("/", async (req, res, next) => {
 
     res.json(frontendResponse);
   } catch (error) {
-    next(error);
+    console.error("Flight booking request failed:", error.stack || error.message);
+    
+    // Gracefully handle any error/timeout by returning a clean 200 OK JSON error response to bypass Cloudflare CORS blocks
+    res.json({
+      rc: error.status === 504 ? "99" : (error.code || "99"),
+      msg: error.message || "The Flight API service is taking too long to respond. Please try again in a few moments.",
+      data: null
+    });
   }
 });
 

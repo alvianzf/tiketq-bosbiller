@@ -31,6 +31,10 @@ const fetchAirlineData = async (requestBodies) => {
 
   const responses = await Promise.all(requestBodies.map(requestBody => 
     makeRequest(JSON.stringify(requestBody))
+      .catch(err => {
+        console.warn(`[Flight Search Warning] Failed to fetch data for airline ${requestBody.airline}:`, err.message);
+        return { data: { data: null } }; // Safe fallback so other online airlines still show results
+      })
   ));
 
   let data = responses.map(response => response.data.data).filter(item => item !== null && item !== undefined);
