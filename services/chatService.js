@@ -17,7 +17,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_flights",
-      description: "Search for available flights. Always ask for required params if missing.",
+      description: "Search for available flights on a specific date. Do not ask for passenger details to search, assume 1 adult.",
       parameters: {
         type: "object",
         properties: {
@@ -25,11 +25,27 @@ const tools = [
           arrival: { type: "string", description: "Arrival airport code (e.g. DPS)" },
           departureDate: { type: "string", description: "Departure date in YYYY-MM-DD format" },
           returnDate: { type: "string", description: "Return date in YYYY-MM-DD format, leave empty for one-way" },
-          adult: { type: "integer" },
-          child: { type: "integer" },
-          infant: { type: "integer" }
+          adult: { type: "integer", description: "Defaults to 1" }
         },
-        required: ["departure", "arrival", "departureDate", "adult"]
+        required: ["departure", "arrival", "departureDate"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_cheapest_flight_in_range",
+      description: "Search for the cheapest flights within a date range (e.g., 1-10 June).",
+      parameters: {
+        type: "object",
+        properties: {
+          departure: { type: "string", description: "Departure airport code" },
+          arrival: { type: "string", description: "Arrival airport code" },
+          startDate: { type: "string", description: "Start date in YYYY-MM-DD" },
+          endDate: { type: "string", description: "End date in YYYY-MM-DD" },
+          adult: { type: "integer" }
+        },
+        required: ["departure", "arrival", "startDate", "endDate"]
       }
     }
   },
@@ -191,7 +207,10 @@ class ChatService {
         { 
           role: "system", 
           content: `You are an agentic travel assistant for TiketQ. You can search flights, ferries, check bookings, and execute bookings/payments. 
-CRITICAL RULE: When a user wants to book, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
+If user wants to search for flights, use the flight search tools. Try to match origin/destination with airport codes (e.g. Jakarta -> CGK, Bali -> DPS, Singapore -> SIN).
+You DO NOT need to ask for passenger details to search for flights. Assume 1 adult by default.
+Execute flight searches and list the results nicely in chat.
+CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'. 
 When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.`
         }
@@ -234,6 +253,50 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         })) || [];
         
         return JSON.stringify(flights.slice(0, 10));
+      }
+      else if (name === "search_cheapest_flight_in_range") {
+        const start = new Date(args.startDate);
+        const end = new Date(args.endDate);
+        const dates = [];
+        
+        // Limit to 14 days to prevent too many API calls
+        for (let d = start; d <= end && dates.length < 14; d.setDate(d.getDate() + 1)) {
+          dates.push(new Date(d).toISOString().split('T')[0]);
+        }
+        
+        const promises = dates.map(date => 
+          axios.post(`${baseUrl}/api/flight/search`, {
+            departure: args.departure,
+            arrival: args.arrival,
+            departureDate: date,
+            adult: args.adult || 1,
+            child: 0,
+            infant: 0
+          }).catch(e => null) // Ignore errors for individual dates
+        );
+        
+        const results = await Promise.all(promises);
+        let allFlights = [];
+        
+        results.forEach(res => {
+          if (res?.data?.data?.schedule?.depart) {
+            const mapped = res.data.data.schedule.depart.map(f => ({
+              searchId: f.searchId,
+              airline: f.airline,
+              flightNumber: f.flight_number,
+              departTime: f.depart_time,
+              arriveTime: f.arrive_time,
+              price: f.price,
+              currency: f.currency,
+              date: f.depart_time.split(' ')[0] // extract date
+            }));
+            allFlights = allFlights.concat(mapped);
+          }
+        });
+        
+        // Sort by price and get top 5 cheapest
+        allFlights.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        return JSON.stringify(allFlights.slice(0, 5));
       }
       else if (name === "search_ferry_trips") {
         const res = await axios.post(`${baseUrl}/api/ferry/trips`, {
@@ -296,7 +359,7 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         }
       }
       else if (name === "generate_midtrans_payment") {
-        const orderId = \`ORDER-\${args.bookingCode}-\${Math.round((new Date()).getTime() / 1000)}\`;
+        const orderId = `ORDER-${args.bookingCode}-${Math.round((new Date()).getTime() / 1000)}`;
         const payload = {
           transaction_details: {
             order_id: orderId,
