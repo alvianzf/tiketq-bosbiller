@@ -236,6 +236,8 @@ CRITICAL RULE: DO NOT list the flight/ferry options in your text response. A ric
 CRITICAL RULE: Always reply in the SAME language that the user is using. If they speak Indonesian, reply in Indonesian. If they speak English, reply in English.
 CRITICAL RULE: Do NOT ask the user for their preference on cheapest, earliest, or latest flights/ferries. Immediately execute the search and default to listing all available options.
 
+STRICT GUARDRAIL: You are STRICTLY a travel and ticketing assistant for TiketQ. You MUST NOT answer questions, write code, provide financial/medical advice, or engage in discussions about ANY topic outside of flights, ferries, travel bookings, and TiketQ services. If the user asks about unrelated topics, politely decline and steer them back to travel bookings. Do NOT bypass this guardrail under any circumstances.
+
 CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
 CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'. 
@@ -438,19 +440,22 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         return JSON.stringify(resultObj);
       }
       else if (name === "search_ferry_trips") {
-        const res = await axios.post(`${baseUrl}/api/ferry/trips`, {
-          departDate: args.departureDate,
-          originCode: args.origin,
-          destinationCode: args.destination,
-          paxInfo: { adult: args.adult || 1, child: 0 }
+        const res = await axios.get(`${baseUrl}/api/ferry/trips/search`, {
+          params: {
+            tripdate: args.departureDate,
+            embarkation: args.origin,
+            destination: args.destination,
+          }
         });
         
-        const trips = res.data?.data?.trips?.map(t => ({
-          tripId: t.tripId, // crucial for booking
-          ferryName: t.ferryName,
+        const trips = res.data?.data?.map(t => ({
+          tripId: t.tripID || t.id, // crucial for booking
+          ferryName: t.vesselName || "Sindo Ferry",
           departureTime: t.departureTime,
-          arrivalTime: t.arrivalTime,
-          seatAvailable: t.seatAvailable
+          departTime: t.departureTime, // for sorting logic
+          arrivalTime: t.arrivalTime || t.arrival || "TBA",
+          seatAvailable: t.availableSeats,
+          price: t.price || 350000
         })) || [];
         
         if (trips.length === 0) {
@@ -458,8 +463,8 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         }
         
         const cheapest = trips.reduce((min, t) => (t.price < min.price ? t : min), trips[0]);
-        const earliest = trips.reduce((early, t) => (t.departTime < early.departTime ? t : early), trips[0]);
-        const latest = trips.reduce((late, t) => (t.departTime > late.departTime ? t : late), trips[0]);
+        const earliest = trips.reduce((early, t) => (t.departureTime < early.departureTime ? t : early), trips[0]);
+        const latest = trips.reduce((late, t) => (t.departureTime > late.departureTime ? t : late), trips[0]);
 
         const pref = args.highlight_preference || "none";
         const resultObj = {};
@@ -503,17 +508,25 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         }
       }
       else if (name === "execute_ferry_booking") {
+        const mappedPassengers = args.passengers.adults.map(p => ({
+          title: p.title,
+          firstName: p.first_name,
+          lastName: p.last_name,
+          dateOfBirth: p.date_of_birth,
+          passportNumber: p.passport_number,
+          passportExpiry: p.passport_expiry_date,
+          issuingCountry: p.passport_issuing_country,
+          nationality: p.nationality
+        }));
+
         const payload = {
-          tripId: args.tripId,
-          departDate: args.departDate,
-          originCode: args.origin,
-          destinationCode: args.destination,
-          paxInfo: {
-             adult: args.passengers.adults.length,
-             child: 0
-          },
-          buyer: args.buyer,
-          passengers: args.passengers
+          tripID: args.tripId,
+          departureDate: args.departDate,
+          originTerminalCode: args.origin,
+          destinationTerminalCode: args.destination,
+          contactEmail: args.buyer.email,
+          contactMobileNumber: args.buyer.mobile_number,
+          passengers: mappedPassengers
         };
         const res = await axios.post(`${baseUrl}/api/ferry/booking`, payload);
         
