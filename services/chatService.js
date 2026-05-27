@@ -223,7 +223,7 @@ If user wants to search for flights, use the flight search tools. Try to match o
 
 You DO NOT need to ask for passenger details to search for flights. Assume 1 adult by default.
 Execute flight searches and list the results nicely in chat. 
-CRITICAL RULE: Always start your response to a flight search (even if no flights are found) with: "Flight from [Origin Code] to [Destination Code] for [Date] is...". Example: "Flight from BTH to CGK for 2026-05-31 is not available." or "Flight from CGK to SIN for 2026-06-01 is available. Here are the options:"
+CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
 CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'. 
 When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.`
@@ -283,6 +283,12 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         
         // Sort by price
         flights.sort((a, b) => a.price - b.price);
+        
+        if (flights.length === 0) {
+          return JSON.stringify({ 
+            message: `There are no flights found for ${args.departureDate} from ${args.departure} to ${args.arrival}. Would you like to try another date?` 
+          });
+        }
         return JSON.stringify(flights.slice(0, 10));
       }
       else if (name === "search_cheapest_flight_in_range") {
@@ -340,6 +346,12 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         
         // Sort by price and get top 5 cheapest
         allFlights.sort((a, b) => a.price - b.price);
+        
+        if (allFlights.length === 0) {
+          return JSON.stringify({ 
+            message: `There are no flights found between ${args.startDate} and ${args.endDate} from ${args.departure} to ${args.arrival}. Would you like to try another date?` 
+          });
+        }
         return JSON.stringify(allFlights.slice(0, 5));
       }
       else if (name === "search_ferry_trips") {
