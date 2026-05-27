@@ -277,11 +277,23 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
                 price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^0-9]/g, '')) : Number(rawPrice);
               }
             }
+            let dDate = f.departureDate || '';
+            let dTime = f.detailTitle?.[0]?.depart || '';
+            let aTime = f.detailTitle?.[f.detailTitle?.length - 1]?.arrival || '';
+            
+            if (dDate) {
+              const parts = dDate.split(' ')[0].split('-');
+              if (parts.length === 3) {
+                dDate = `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY
+              }
+            }
+
             return {
               searchId: f.searchId,
               airline: f.airlineName,
-              departTime: f.departureDate,
-              arriveTime: f.arrivalDate,
+              departDate: dDate,
+              departTime: dTime || f.departureDate,
+              arriveTime: aTime || f.arrivalDate,
               price: price,
               isTransit: f.isTransit,
               duration: f.duration
@@ -336,15 +348,26 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
                   price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^0-9]/g, '')) : Number(rawPrice);
                 }
               }
+              let dDate = f.departureDate || '';
+              let dTime = f.detailTitle?.[0]?.depart || '';
+              let aTime = f.detailTitle?.[f.detailTitle?.length - 1]?.arrival || '';
+              
+              if (dDate) {
+                const parts = dDate.split(' ')[0].split('-');
+                if (parts.length === 3) {
+                  dDate = `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY
+                }
+              }
+
               return {
                 searchId: f.searchId,
                 airline: f.airlineName,
-                departTime: f.departureDate,
-                arriveTime: f.arrivalDate,
+                departDate: dDate,
+                departTime: dTime || f.departureDate,
+                arriveTime: aTime || f.arrivalDate,
                 price: price,
                 isTransit: f.isTransit,
-                duration: f.duration,
-                date: f.departureDate ? f.departureDate.split(' ')[0] : ''
+                duration: f.duration
               };
             }).filter(f => f.price !== null && !isNaN(f.price) && f.price > 0);
             
