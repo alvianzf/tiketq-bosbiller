@@ -196,6 +196,18 @@ const tools = [
         required: ["bookingCode"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "show_customer_service",
+      description: "Show the customer service contact card. Use this when the user asks for help, complaints, or customer service.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    }
   }
 ];
 
@@ -241,7 +253,8 @@ STRICT GUARDRAIL: You are STRICTLY a travel and ticketing assistant for TiketQ. 
 CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
 CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'. 
-When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.`
+When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
+If the user asks for customer service, help, or complaints, use the 'show_customer_service' tool and acknowledge it briefly.`
         }
       ]);
     }
@@ -585,6 +598,14 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         });
         
         return JSON.stringify(res.data?.data || { error: "Booking not found" });
+      }
+      else if (name === "show_customer_service") {
+        socket.emit("chat:tool_result", {
+          type: "customer_service_card",
+          data: {}
+        });
+        
+        return JSON.stringify({ success: true, message: "Customer service card displayed." });
       }
     } catch (err) {
       console.error(`Error executing tool ${name}:`, err.response?.data || err.message);
