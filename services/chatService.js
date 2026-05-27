@@ -25,7 +25,8 @@ const tools = [
           arrival: { type: "string", description: "Arrival airport code (e.g. DPS)" },
           departureDate: { type: "string", description: "Departure date in YYYY-MM-DD format" },
           returnDate: { type: "string", description: "Return date in YYYY-MM-DD format, leave empty for one-way" },
-          adult: { type: "integer", description: "Defaults to 1" }
+          adult: { type: "integer", description: "Defaults to 1" },
+          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise 'none'." }
         },
         required: ["departure", "arrival", "departureDate"]
       }
@@ -43,7 +44,8 @@ const tools = [
           arrival: { type: "string", description: "Arrival airport code" },
           startDate: { type: "string", description: "Start date in YYYY-MM-DD" },
           endDate: { type: "string", description: "End date in YYYY-MM-DD" },
-          adult: { type: "integer" }
+          adult: { type: "integer" },
+          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise 'none'." }
         },
         required: ["departure", "arrival", "startDate", "endDate"]
       }
@@ -60,7 +62,8 @@ const tools = [
           origin: { type: "string", description: "Origin port code" },
           destination: { type: "string", description: "Destination port code" },
           departureDate: { type: "string", description: "Departure date in YYYY-MM-DD format" },
-          adult: { type: "integer" }
+          adult: { type: "integer" },
+          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise 'none'." }
         },
         required: ["origin", "destination", "departureDate", "adult"]
       }
@@ -311,12 +314,22 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         const earliest = flights.reduce((early, f) => (f.departTime < early.departTime ? f : early), flights[0]);
         const latest = flights.reduce((late, f) => (f.departTime > late.departTime ? f : late), flights[0]);
 
-        const resultObj = {
-          cheapest,
-          earliest,
-          latest,
-          other_options: flights.filter(f => f !== cheapest && f !== earliest && f !== latest).slice(0, 5)
-        };
+        const pref = args.highlight_preference || "none";
+        const resultObj = {};
+
+        if (pref === "cheapest") {
+          resultObj.cheapest = cheapest;
+        } else if (pref === "earliest") {
+          resultObj.earliest = earliest;
+        } else if (pref === "latest") {
+          resultObj.latest = latest;
+        } else if (pref === "all") {
+          resultObj.cheapest = cheapest;
+          resultObj.earliest = earliest;
+          resultObj.latest = latest;
+        } else {
+          resultObj.options = flights.slice(0, 5);
+        }
         
         socket.emit("chat:tool_result", {
           type: "flight_results",
@@ -399,12 +412,22 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         const earliest = allFlights.reduce((early, f) => (f.departDate < early.departDate || (f.departDate === early.departDate && f.departTime < early.departTime) ? f : early), allFlights[0]);
         const latest = allFlights.reduce((late, f) => (f.departDate > late.departDate || (f.departDate === late.departDate && f.departTime > late.departTime) ? f : late), allFlights[0]);
 
-        const resultObj = {
-          cheapest,
-          earliest,
-          latest,
-          other_options: allFlights.filter(f => f !== cheapest && f !== earliest && f !== latest).slice(0, 5)
-        };
+        const pref = args.highlight_preference || "none";
+        const resultObj = {};
+
+        if (pref === "cheapest") {
+          resultObj.cheapest = cheapest;
+        } else if (pref === "earliest") {
+          resultObj.earliest = earliest;
+        } else if (pref === "latest") {
+          resultObj.latest = latest;
+        } else if (pref === "all") {
+          resultObj.cheapest = cheapest;
+          resultObj.earliest = earliest;
+          resultObj.latest = latest;
+        } else {
+          resultObj.options = allFlights.slice(0, 5);
+        }
         
         socket.emit("chat:tool_result", {
           type: "flight_results",
@@ -437,12 +460,22 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         const earliest = trips.reduce((early, t) => (t.departTime < early.departTime ? t : early), trips[0]);
         const latest = trips.reduce((late, t) => (t.departTime > late.departTime ? t : late), trips[0]);
 
-        const resultObj = {
-          cheapest,
-          earliest,
-          latest,
-          other_options: trips.filter(t => t !== cheapest && t !== earliest && t !== latest).slice(0, 5)
-        };
+        const pref = args.highlight_preference || "none";
+        const resultObj = {};
+
+        if (pref === "cheapest") {
+          resultObj.cheapest = cheapest;
+        } else if (pref === "earliest") {
+          resultObj.earliest = earliest;
+        } else if (pref === "latest") {
+          resultObj.latest = latest;
+        } else if (pref === "all") {
+          resultObj.cheapest = cheapest;
+          resultObj.earliest = earliest;
+          resultObj.latest = latest;
+        } else {
+          resultObj.options = trips.slice(0, 5);
+        }
         
         socket.emit("chat:tool_result", {
           type: "ferry_results",
