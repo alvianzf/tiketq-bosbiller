@@ -1,31 +1,54 @@
 # TiketQ Bosbiller (Backend API)
 
-This is the primary Node.js/Express backend for the TiketQ ecosystem. It orchestrates interactions between the frontend, databases, third-party ticketing providers (like Sindo Ferry and Lion Air), payment gateways (Midtrans), and real-time socket connections.
+**AI Context Note:** This document provides explicit tech stack and environment configurations to ensure AI agents have full context before modifying backend logic.
 
-## Requirements
-- Node.js (v18+)
-- Postgres / MySQL Database
-- Redis (for caching and session storage)
+## Tech Stack
+- **Runtime:** Node.js v18+
+- **Framework:** Express.js `~4.16.1`
+- **Database:** PostgreSQL (Managed via `@prisma/client ^6.19.2`)
+- **Real-Time:** `socket.io ^4.8.3`
+- **Caching/Session:** `redis ^4.6.14`, `node-cache ^5.1.2`
+- **Payment Gateway:** `midtrans-client ^1.3.1`
+- **PDF Generation:** `pdfkit ^0.18.0`, `svg-to-pdfkit ^0.1.8`
+- **AI/LLM:** `openai ^6.39.0`
 
-## Setup
+## Required Environment Variables (`.env`)
+Before starting the server, ensure the following variables are strictly defined in `.env`:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/tiketq"
+REDIS_URL="redis://localhost:6379"
+
+# Security
+JWT_SECRET="your_jwt_secret"
+
+# Midtrans
+MIDTRANS_SERVER_KEY="server_key_here"
+MIDTRANS_CLIENT_KEY="client_key_here"
+MIDTRANS_IS_PRODUCTION="false"
+
+# Providers
+SINDO_FERRY_API_KEY="api_key"
+LION_AIR_API_KEY="api_key"
+
+# AI Chatbot
+OPENAI_API_KEY="sk-..."
+```
+
+## Setup & Run
 
 1. **Install dependencies:**
    ```bash
    npm install
    ```
 
-2. **Configure Environment Variables:**
-   Create a `.env` file based on the required services (Database URLs, Midtrans keys, Provider credentials).
+2. **Generate Prisma Client:**
+   ```bash
+   npx prisma generate
+   ```
 
 3. **Start the server:**
    ```bash
    npm run start
    ```
-
-## Documentation Wiki
-
-Explore the detailed documentation in the `docs/` folder:
-- [Home & Overview](docs/HOME.md)
-- [API Reference](docs/API_REFERENCE.md)
-- [Webhooks & Sockets](docs/WEBHOOKS_AND_SOCKETS.md)
-- [System Architecture](docs/ARCHITECTURE.md)
