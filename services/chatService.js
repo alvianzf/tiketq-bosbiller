@@ -249,7 +249,6 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
           departure: args.departure,
           arrival: args.arrival,
           departureDate: args.departureDate,
-          returnDate: args.returnDate || "",
           adult: args.adult || 1,
           child: args.child || 0,
           infant: args.infant || 0
