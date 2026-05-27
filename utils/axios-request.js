@@ -20,7 +20,7 @@ const axiosInstance = axios.create({
   headers: {
     Authorization: `Basic ${auth}`,
   },
-  timeout: 12000, // Reduced default timeout to 12s to prevent 504 gateway timeouts from Cloudflare/Nginx
+  timeout: 45000, // Increased to 45s to allow slower real airline bookings to complete before Nginx/Cloudflare limits trigger
 });
 
 /**

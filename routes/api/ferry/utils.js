@@ -4,8 +4,8 @@ require("dotenv").config();
 const { FERRY_URL, FERRY_CORE_URL } = process.env;
 
 const apiEndpoints = {
-  api: axios.create({ baseURL: FERRY_URL, timeout: 12000 }),
-  core: axios.create({ baseURL: FERRY_CORE_URL, timeout: 12000 }),
+  api: axios.create({ baseURL: FERRY_URL, timeout: 45000 }),
+  core: axios.create({ baseURL: FERRY_CORE_URL, timeout: 45000 }),
 };
 
 const getFerryToken = require("../../../utils/node-cache");
