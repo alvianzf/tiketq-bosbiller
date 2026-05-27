@@ -5,13 +5,18 @@ let activeVisitors = 0;
 module.exports = {
   init: (server) => {
     const { Server } = require("socket.io");
-    const isProduction = 
-      process.env.ENVIRONMENT === "production" || 
-      process.env.NODE_ENV === "production";
     io = new Server(server, {
       cors: {
-        origin: isProduction ? false : "*", // Nginx handles CORS headers on production — avoid duplicate headers
-        methods: ["GET", "POST"]
+        origin: function (origin, callback) {
+          // Allow connection ONLY from localhost/127.0.0.1 on development, yield to Nginx on production
+          if (!origin || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+            callback(null, true);
+          } else {
+            callback(null, false);
+          }
+        },
+        methods: ["GET", "POST"],
+        credentials: true
       }
     });
 
