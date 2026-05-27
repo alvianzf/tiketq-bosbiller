@@ -29,6 +29,13 @@ router.post('/midtrans', async (req, res, next) => {
             const updatedBooking = await FerryBookingDAO.updatePaymentStatusByNo(bookingNo, true);
             console.log(`Successfully settled ferry booking ${bookingNo}`);
 
+            try {
+              const io = require('../../socket').getIo();
+              io.emit("booking:update", { bookingNo });
+            } catch (socketErr) {
+              console.error("Failed to emit socket event:", socketErr.message);
+            }
+
             // Fetch real voucher codes from Sindo Ferry API
             try {
               const { makeRequest } = require("../api/ferry/utils");
@@ -111,6 +118,13 @@ router.post('/midtrans', async (req, res, next) => {
             await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(bookingCode);
             console.log(`Successfully settled booking ${bookingCode}`);
             
+            try {
+              const io = require('../../socket').getIo();
+              io.emit("booking:update", { bookingNo: bookingCode });
+            } catch (socketErr) {
+              console.error("Failed to emit socket event:", socketErr.message);
+            }
+
             // Send E-Ticket Email asynchronously
             try {
               const { generateTicketPDF } = require('../../services/pdfService');
