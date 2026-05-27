@@ -242,15 +242,22 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         };
         const res = await axios.post(`${baseUrl}/api/flight/search`, payload);
         
-        const flights = res.data?.data?.schedule?.depart?.map(f => ({
-          searchId: f.searchId, // crucial for booking
-          airline: f.airline,
-          flightNumber: f.flight_number,
-          departTime: f.depart_time,
-          arriveTime: f.arrive_time,
-          price: f.price,
-          currency: f.currency
-        })) || [];
+        let flights = [];
+        if (Array.isArray(res.data?.data)) {
+          res.data.data.forEach(airlineData => {
+            if (airlineData?.schedule?.depart) {
+              flights = flights.concat(airlineData.schedule.depart.map(f => ({
+                searchId: f.searchId,
+                airline: f.airline,
+                flightNumber: f.flight_number,
+                departTime: f.depart_time,
+                arriveTime: f.arrive_time,
+                price: f.price,
+                currency: f.currency
+              })));
+            }
+          });
+        }
         
         return JSON.stringify(flights.slice(0, 10));
       }
@@ -279,18 +286,22 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         let allFlights = [];
         
         results.forEach(res => {
-          if (res?.data?.data?.schedule?.depart) {
-            const mapped = res.data.data.schedule.depart.map(f => ({
-              searchId: f.searchId,
-              airline: f.airline,
-              flightNumber: f.flight_number,
-              departTime: f.depart_time,
-              arriveTime: f.arrive_time,
-              price: f.price,
-              currency: f.currency,
-              date: f.depart_time.split(' ')[0] // extract date
-            }));
-            allFlights = allFlights.concat(mapped);
+          if (Array.isArray(res?.data?.data)) {
+            res.data.data.forEach(airlineData => {
+              if (airlineData?.schedule?.depart) {
+                const mapped = airlineData.schedule.depart.map(f => ({
+                  searchId: f.searchId,
+                  airline: f.airline,
+                  flightNumber: f.flight_number,
+                  departTime: f.depart_time,
+                  arriveTime: f.arrive_time,
+                  price: f.price,
+                  currency: f.currency,
+                  date: f.depart_time ? f.depart_time.split(' ')[0] : ''
+                }));
+                allFlights = allFlights.concat(mapped);
+              }
+            });
           }
         });
         
