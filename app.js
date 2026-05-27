@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const cookieParser = require("cookie-parser");
@@ -16,7 +17,11 @@ const app = express();
 
 // Middleware
 app.use(logger("dev"));
-if (process.env.ENVIRONMENT !== "production") {
+const isProduction = 
+  process.env.ENVIRONMENT === "production" || 
+  process.env.NODE_ENV === "production";
+
+if (!isProduction) {
   app.use(
     cors({
       origin: true,

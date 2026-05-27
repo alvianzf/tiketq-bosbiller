@@ -1,10 +1,13 @@
+require("dotenv").config();
 let io;
 let activeVisitors = 0;
 
 module.exports = {
   init: (server) => {
     const { Server } = require("socket.io");
-    const isProduction = process.env.ENVIRONMENT === "production";
+    const isProduction = 
+      process.env.ENVIRONMENT === "production" || 
+      process.env.NODE_ENV === "production";
     io = new Server(server, {
       cors: {
         origin: isProduction ? false : "*", // Nginx handles CORS headers on production — avoid duplicate headers
