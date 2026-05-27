@@ -229,7 +229,7 @@ If user wants to search for flights, use the flight search tools. Try to match o
 
 You DO NOT need to ask for passenger details to search for flights. Assume 1 adult by default.
 Execute flight/ferry searches and list the results nicely in chat. 
-CRITICAL RULE: DO NOT use Markdown tables. Instead, present the flight/ferry options as a clean, easy-to-read bulleted list. You MUST include Airline/Ferry, Depart Time, Arrive Time, Duration, and Price for each option.
+CRITICAL RULE: DO NOT list the flight/ferry options in your text response. A rich UI card will automatically render in the chat. You MUST simply acknowledge the results, for example: "Here are the best schedules I found for you. Please select one of the cards below to continue."
 CRITICAL RULE: Always reply in the SAME language that the user is using. If they speak Indonesian, reply in Indonesian. If they speak English, reply in English.
 
 CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
@@ -301,15 +301,29 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
           }).filter(f => f.price !== null && !isNaN(f.price) && f.price > 0);
         }
         
-        // Sort by price
-        flights.sort((a, b) => a.price - b.price);
-        
         if (flights.length === 0) {
           return JSON.stringify({ 
             message: `There are no flights found for ${args.departureDate} from ${args.departure} to ${args.arrival}. Would you like to try another date?` 
           });
         }
-        return JSON.stringify(flights.slice(0, 10));
+
+        const cheapest = flights.reduce((min, f) => (f.price < min.price ? f : min), flights[0]);
+        const earliest = flights.reduce((early, f) => (f.departTime < early.departTime ? f : early), flights[0]);
+        const latest = flights.reduce((late, f) => (f.departTime > late.departTime ? f : late), flights[0]);
+
+        const resultObj = {
+          cheapest,
+          earliest,
+          latest,
+          other_options: flights.filter(f => f !== cheapest && f !== earliest && f !== latest).slice(0, 5)
+        };
+        
+        socket.emit("chat:tool_result", {
+          type: "flight_results",
+          data: resultObj
+        });
+
+        return JSON.stringify(resultObj);
       }
       else if (name === "search_cheapest_flight_in_range") {
         const start = new Date(args.startDate);
@@ -375,15 +389,29 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
           }
         });
         
-        // Sort by price and get top 5 cheapest
-        allFlights.sort((a, b) => a.price - b.price);
-        
         if (allFlights.length === 0) {
           return JSON.stringify({ 
             message: `There are no flights found between ${args.startDate} and ${args.endDate} from ${args.departure} to ${args.arrival}. Would you like to try another date?` 
           });
         }
-        return JSON.stringify(allFlights.slice(0, 5));
+        
+        const cheapest = allFlights.reduce((min, f) => (f.price < min.price ? f : min), allFlights[0]);
+        const earliest = allFlights.reduce((early, f) => (f.departDate < early.departDate || (f.departDate === early.departDate && f.departTime < early.departTime) ? f : early), allFlights[0]);
+        const latest = allFlights.reduce((late, f) => (f.departDate > late.departDate || (f.departDate === late.departDate && f.departTime > late.departTime) ? f : late), allFlights[0]);
+
+        const resultObj = {
+          cheapest,
+          earliest,
+          latest,
+          other_options: allFlights.filter(f => f !== cheapest && f !== earliest && f !== latest).slice(0, 5)
+        };
+        
+        socket.emit("chat:tool_result", {
+          type: "flight_results",
+          data: resultObj
+        });
+
+        return JSON.stringify(resultObj);
       }
       else if (name === "search_ferry_trips") {
         const res = await axios.post(`${baseUrl}/api/ferry/trips`, {
@@ -401,7 +429,27 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
           seatAvailable: t.seatAvailable
         })) || [];
         
-        return JSON.stringify(trips.slice(0, 10));
+        if (trips.length === 0) {
+          return JSON.stringify({ message: "No ferry trips found for the given criteria." });
+        }
+        
+        const cheapest = trips.reduce((min, t) => (t.price < min.price ? t : min), trips[0]);
+        const earliest = trips.reduce((early, t) => (t.departTime < early.departTime ? t : early), trips[0]);
+        const latest = trips.reduce((late, t) => (t.departTime > late.departTime ? t : late), trips[0]);
+
+        const resultObj = {
+          cheapest,
+          earliest,
+          latest,
+          other_options: trips.filter(t => t !== cheapest && t !== earliest && t !== latest).slice(0, 5)
+        };
+        
+        socket.emit("chat:tool_result", {
+          type: "ferry_results",
+          data: resultObj
+        });
+
+        return JSON.stringify(resultObj);
       }
       else if (name === "execute_flight_booking") {
         args.child = args.child || 0;
