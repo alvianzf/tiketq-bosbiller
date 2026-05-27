@@ -20,6 +20,8 @@ module.exports = {
       }
     });
 
+    const chatService = require('./services/chatService');
+
     io.on("connection", (socket) => {
       console.log("Client connected:", socket.id);
       
@@ -27,6 +29,14 @@ module.exports = {
       socket.on("visitor_connected", () => {
         activeVisitors++;
         io.emit("visitors_update", { activeVisitors });
+      });
+
+      // Chat events
+      socket.on("chat:message", async (data) => {
+        const { sessionId, text } = data;
+        if (!sessionId || !text) return;
+        
+        await chatService.processMessage(sessionId, text, socket);
       });
 
       socket.on("disconnect", () => {
