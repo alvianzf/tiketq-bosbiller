@@ -206,14 +206,20 @@ class ChatService {
       const today = new Date();
       const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       const dayName = days[today.getDay()];
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
       this.sessions.set(sessionId, [
         { 
           role: "system", 
           content: `You are an agentic travel assistant for TiketQ. You can search flights, ferries, check bookings, and execute bookings/payments.
           
-CURRENT DATE CONTEXT: Today is ${dayName}, ${today.toDateString()}. 
-When the user says 'tomorrow' or 'next Friday' or 'May 31', calculate the exact YYYY-MM-DD date relative to today's date.
+CURRENT DATE CONTEXT:
+- Today: ${today.toISOString().split('T')[0]}
+- Tomorrow: ${tomorrow.toISOString().split('T')[0]}
+- Current Year: ${today.getFullYear()}
+
+If the user says 'tomorrow', use the Tomorrow date exactly. If they say 'May 31', append the Current Year to it (e.g. ${today.getFullYear()}-05-31). Do not claim you cannot determine the date.
 
 If user wants to search for flights, use the flight search tools. Try to match origin/destination with airport codes automatically without asking the user. For example:
 - Jakarta -> CGK (or HLP)
@@ -222,7 +228,13 @@ If user wants to search for flights, use the flight search tools. Try to match o
 - Singapore -> SIN
 
 You DO NOT need to ask for passenger details to search for flights. Assume 1 adult by default.
-Execute flight searches and list the results nicely in chat. 
+Execute flight/ferry searches and list the results nicely in chat. 
+CRITICAL RULE: Always present flight and ferry search results using a clean Markdown table so it renders properly. You MUST include columns for Airline/Ferry, Depart Time, Arrive Time, Duration, and Price. 
+Example format:
+| Airline | Depart | Arrive | Duration | Price |
+|---|---|---|---|---|
+| Citilink | 10:00 | 11:30 | 1h 30m | Rp 900,000 |
+
 CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
 CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'. 
