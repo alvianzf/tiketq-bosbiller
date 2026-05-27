@@ -244,21 +244,31 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         
         let flights = [];
         if (Array.isArray(res.data?.data)) {
-          res.data.data.forEach(airlineData => {
-            if (airlineData?.schedule?.depart) {
-              flights = flights.concat(airlineData.schedule.depart.map(f => ({
-                searchId: f.searchId,
-                airline: f.airline,
-                flightNumber: f.flight_number,
-                departTime: f.depart_time,
-                arriveTime: f.arrive_time,
-                price: f.price,
-                currency: f.currency
-              })));
+          const rawFlights = res.data.data.flatMap(arr => Array.isArray(arr) ? arr.flat() : [arr]);
+          
+          flights = rawFlights.map(f => {
+            let price = null;
+            if (f.classes && f.classes.length > 0 && f.classes[0] && f.classes[0].length > 0) {
+              const firstClass = f.classes[0][0];
+              if (firstClass && firstClass.price !== undefined && firstClass.price !== null) {
+                const rawPrice = firstClass.price;
+                price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^0-9]/g, '')) : Number(rawPrice);
+              }
             }
-          });
+            return {
+              searchId: f.searchId,
+              airline: f.airlineName,
+              departTime: f.departureDate,
+              arriveTime: f.arrivalDate,
+              price: price,
+              isTransit: f.isTransit,
+              duration: f.duration
+            };
+          }).filter(f => f.price !== null && !isNaN(f.price) && f.price > 0);
         }
         
+        // Sort by price
+        flights.sort((a, b) => a.price - b.price);
         return JSON.stringify(flights.slice(0, 10));
       }
       else if (name === "search_cheapest_flight_in_range") {
@@ -287,26 +297,35 @@ When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
         
         results.forEach(res => {
           if (Array.isArray(res?.data?.data)) {
-            res.data.data.forEach(airlineData => {
-              if (airlineData?.schedule?.depart) {
-                const mapped = airlineData.schedule.depart.map(f => ({
-                  searchId: f.searchId,
-                  airline: f.airline,
-                  flightNumber: f.flight_number,
-                  departTime: f.depart_time,
-                  arriveTime: f.arrive_time,
-                  price: f.price,
-                  currency: f.currency,
-                  date: f.depart_time ? f.depart_time.split(' ')[0] : ''
-                }));
-                allFlights = allFlights.concat(mapped);
+            const rawFlights = res.data.data.flatMap(arr => Array.isArray(arr) ? arr.flat() : [arr]);
+            
+            const mapped = rawFlights.map(f => {
+              let price = null;
+              if (f.classes && f.classes.length > 0 && f.classes[0] && f.classes[0].length > 0) {
+                const firstClass = f.classes[0][0];
+                if (firstClass && firstClass.price !== undefined && firstClass.price !== null) {
+                  const rawPrice = firstClass.price;
+                  price = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^0-9]/g, '')) : Number(rawPrice);
+                }
               }
-            });
+              return {
+                searchId: f.searchId,
+                airline: f.airlineName,
+                departTime: f.departureDate,
+                arriveTime: f.arrivalDate,
+                price: price,
+                isTransit: f.isTransit,
+                duration: f.duration,
+                date: f.departureDate ? f.departureDate.split(' ')[0] : ''
+              };
+            }).filter(f => f.price !== null && !isNaN(f.price) && f.price > 0);
+            
+            allFlights = allFlights.concat(mapped);
           }
         });
         
         // Sort by price and get top 5 cheapest
-        allFlights.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        allFlights.sort((a, b) => a.price - b.price);
         return JSON.stringify(allFlights.slice(0, 5));
       }
       else if (name === "search_ferry_trips") {
