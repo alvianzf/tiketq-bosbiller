@@ -95,4 +95,6 @@ The API utilizes standard HTTP status codes (200, 201, 400, 401, 403, 404, 500).
 
 ## API Documentation
 
-Interactive documentation via Swagger UI: [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+- Interactive documentation via Swagger UI: [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+- **Official Bosbiller Flight API Specification**: Comprehensive reference detailing request payloads, response object shapes, and error codes for the integrated 3rd-party flight services. See [docs/wiki/bosbiller-flight-api-reference.md](file:///Users/azfaturrahman/Projects/tiketq/tiketq-bosbiller/docs/wiki/bosbiller-flight-api-reference.md).
+
