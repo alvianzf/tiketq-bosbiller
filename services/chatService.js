@@ -26,7 +26,7 @@ const tools = [
           departureDate: { type: "string", description: "Departure date in YYYY-MM-DD format" },
           returnDate: { type: "string", description: "Return date in YYYY-MM-DD format, leave empty for one-way" },
           adult: { type: "integer", description: "Defaults to 1" },
-          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise 'none'." }
+          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise default to 'all'. DO NOT ask the user for their preference." }
         },
         required: ["departure", "arrival", "departureDate"]
       }
@@ -45,7 +45,7 @@ const tools = [
           startDate: { type: "string", description: "Start date in YYYY-MM-DD" },
           endDate: { type: "string", description: "End date in YYYY-MM-DD" },
           adult: { type: "integer" },
-          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise 'none'." }
+          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise default to 'all'. DO NOT ask the user for their preference." }
         },
         required: ["departure", "arrival", "startDate", "endDate"]
       }
@@ -63,7 +63,7 @@ const tools = [
           destination: { type: "string", description: "Destination port code" },
           departureDate: { type: "string", description: "Departure date in YYYY-MM-DD format" },
           adult: { type: "integer" },
-          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise 'none'." }
+          highlight_preference: { type: "string", enum: ["cheapest", "earliest", "latest", "all", "none"], description: "If user explicitly asks for cheapest, earliest, or latest, select it. Otherwise default to 'all'. DO NOT ask the user for their preference." }
         },
         required: ["origin", "destination", "departureDate", "adult"]
       }
@@ -234,6 +234,7 @@ You DO NOT need to ask for passenger details to search for flights. Assume 1 adu
 Execute flight/ferry searches and list the results nicely in chat. 
 CRITICAL RULE: DO NOT list the flight/ferry options in your text response. A rich UI card will automatically render in the chat. You MUST simply acknowledge the results, for example: "Here are the best schedules I found for you. Please select one of the cards below to continue."
 CRITICAL RULE: Always reply in the SAME language that the user is using. If they speak Indonesian, reply in Indonesian. If they speak English, reply in English.
+CRITICAL RULE: Do NOT ask the user for their preference on cheapest, earliest, or latest flights/ferries. Immediately execute the search and default to listing all available options.
 
 CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
 CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
