@@ -1,6 +1,6 @@
 # Full Architecture & Prisma Schema Map
 
-**AI Context Note:** This document contains the exhaustive database schema to prevent Hallucination of column names. 
+This document describes the database architecture and data access patterns for `tiketq-bosbiller`. It contains the complete Prisma schema verbatim — every model, field, type, default value, relation, and table mapping — so that database queries can be written without guessing column names. It also documents the mandatory Data Access Object (DAO) pattern: all database interactions must be routed through DAO classes in `/db/dao/`, and route controllers must never import Prisma directly. Understanding this document is prerequisite to adding any new database model, relation, or query to the backend.
 
 ## The DAO Layer Rule
 All database calls must be wrapped in Data Access Objects located in `/db/dao/`. Controllers (`routes/*.js`) must `require` the DAO class and call static methods. They must NEVER `require("../../db/index")` directly to execute raw queries.

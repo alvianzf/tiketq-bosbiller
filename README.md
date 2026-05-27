@@ -1,6 +1,6 @@
 # TiketQ Bosbiller (Backend API)
 
-**AI Context Note:** This document provides explicit tech stack and environment configurations to ensure AI agents have full context before modifying backend logic.
+The Node.js/Express backend that powers all TiketQ services. It integrates with a third-party flight provider API, the Sindo Ferry API, and Midtrans for payments. It manages the PostgreSQL database via Prisma ORM, uses Redis for trip and route caching, generates PDF e-tickets with PDFKit, sends transactional emails via Nodemailer, and serves an OpenAI-compatible LLM agentic chatbot over Socket.io. This README covers the full dependency list, all required environment variables with descriptions, and the exact commands to bootstrap and run the server.
 
 ## Tech Stack
 - **Runtime:** Node.js v18+

@@ -1,6 +1,6 @@
 # Full API Reference — Requests & Responses
 
-**AI Context Note:** This document is derived from reading the actual route handler source files. Every request body, response shape, and business logic note is sourced directly from the code. Use this as the single source of truth when building integrations or new features.
+The definitive reference for every HTTP endpoint exposed by `tiketq-bosbiller`, derived by reading the actual route handler source files. For each endpoint, this document provides the HTTP method, full path, authentication requirement, exact request body shape, every possible response payload (success and error), and a detailed description of the business logic executed — including edge cases like the unified ferry/flight gateway, Redis caching behavior, and the multi-step Sindo Ferry booking adapter. Use this document when building integrations, writing frontend API calls, or debugging unexpected responses.
 
 > **Base URL:** `https://api.tiketq.com` (production) / `http://localhost:3000` (development)  
 > **Content-Type:** `application/json` for all requests unless noted  

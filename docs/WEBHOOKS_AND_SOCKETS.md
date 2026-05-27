@@ -1,6 +1,6 @@
 # Webhooks & Socket.io
 
-Derived from `socket.js`, `routes/webhooks/index.js`, and `services/chatService.js`.
+This document is the single reference for all real-time communication in TiketQ. It covers three interconnected systems: (1) the Midtrans payment webhook at `POST /webhooks/midtrans` — its payload shape, the ferry vs. flight branching logic, and how it emits the `booking:update` event; (2) the Socket.io server configuration including the CORS policy for production vs. development; and (3) the complete AI chat service — the LLM model configuration, the exact system prompt injected into every session, all 8 tool definitions with their full JSON parameter schemas, the agentic tool loop implementation, and a full typed catalog of every socket event (client → server and server → client) including all sub-types of `chat:tool_result`. This document should be read in full before modifying any real-time feature, webhook, or the chatbot.
 
 ---
 
