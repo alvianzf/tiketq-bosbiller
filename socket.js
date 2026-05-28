@@ -8,14 +8,12 @@ module.exports = {
     io = new Server(server, {
       cors: {
         origin: function (origin, callback) {
-          // Allow connection from localhost/127.0.0.1, production domains, or when in production env
+          // Allow connection from localhost/127.0.0.1.
+          // Production: CORS is handled at the Nginx proxy layer, not here.
           if (
             !origin || 
             origin.includes("localhost") || 
-            origin.includes("127.0.0.1") || 
-            origin.includes("tiketq.com") ||
-            process.env.ENVIRONMENT === "production" || 
-            process.env.NODE_ENV === "production"
+            origin.includes("127.0.0.1")
           ) {
             callback(null, true);
           } else {
