@@ -78,9 +78,11 @@ router.get("/", async (req, res) => {
   checks.push(
     (async () => {
       try {
+        const serverKey = process.env.MIDTRANS_SERVER_KEY || "";
+        const isProduction = serverKey ? !serverKey.startsWith("SB-") : false;
         const snap = new midtransClient.Snap({
-          isProduction: false,
-          serverKey: process.env.MIDTRANS_SERVER_KEY || "",
+          isProduction: isProduction,
+          serverKey: serverKey,
           clientKey: process.env.MIDTRANS_CLIENT_KEY || "",
         });
         // Just check if we can initialize; real status check might needing hitting an endpoint

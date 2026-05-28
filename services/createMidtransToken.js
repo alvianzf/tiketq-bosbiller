@@ -9,9 +9,12 @@ const midtransClient = require('midtrans-client');
  */
 async function createMidtransToken(transactionDetails) {
   try {
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
+    const isProduction = serverKey ? !serverKey.startsWith('SB-') : false;
+
     const snap = new midtransClient.Snap({
-      isProduction: process.env.NODE_ENV === 'production',
-      serverKey: process.env.MIDTRANS_SERVER_KEY,
+      isProduction: isProduction,
+      serverKey: serverKey,
       clientKey: process.env.MIDTRANS_CLIENT_KEY
     });
 
