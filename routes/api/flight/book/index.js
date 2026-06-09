@@ -47,7 +47,6 @@ router.post("/", async (req, res, next) => {
             passportNumber: p.passport_number,
             nationality: p.nationality,
             cabinClass: p.cabin_class || p.cabinClass || 'economy',
-            baggageKg: Number(p.baggage_kg ?? p.baggageKg ?? 0),
             isLapInfant: Boolean(p.is_lap_infant ?? p.isLapInfant ?? false)
           });
         }

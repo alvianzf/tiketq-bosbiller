@@ -101,7 +101,6 @@ model Passenger {
   ferryBookingId  Int?
   voucherCodeId   String?
   cabinClass      String?        @default("economy")
-  baggageKg       Int?           @default(0)
   isLapInfant     Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
