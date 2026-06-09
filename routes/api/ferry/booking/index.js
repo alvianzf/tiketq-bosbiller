@@ -97,6 +97,7 @@ router.post("/", ensureToken, async (req, res, next) => {
     contactEmail,
     contactMobileNumber,
     departureDate,
+    returnDate,
     originTerminalCode,
     destinationTerminalCode,
     passengers = []
@@ -258,7 +259,7 @@ router.post("/", ensureToken, async (req, res, next) => {
       serviceFee: 0,
       totalSales: livePrice,
       departureDate: formattedDate,
-      returnDate: null,
+      returnDate: returnDate ? new Date(returnDate) : null,
       originId: originTerminal.id,
       destinationId: destTerminal.id,
       email: contactEmail,

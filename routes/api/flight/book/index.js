@@ -45,7 +45,10 @@ router.post("/", async (req, res, next) => {
             lastName: p.last_name,
             dateOfBirth: p.date_of_birth,
             passportNumber: p.passport_number,
-            nationality: p.nationality
+            nationality: p.nationality,
+            cabinClass: p.cabin_class || p.cabinClass || 'economy',
+            baggageKg: Number(p.baggage_kg ?? p.baggageKg ?? 0),
+            isLapInfant: Boolean(p.is_lap_infant ?? p.isLapInfant ?? false)
           });
         }
       }
