@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const FlightBookingDAO = require("../../../db/dao/FlightBookingDAO");
-const FerryBookingDAO = require("../../../db/dao/FerryBookingDAO");
 
 /**
- * GET bookings by email for guest history lookup
+ * GET /api/history?email=...
+ * Guest booking history lookup — no authentication required.
  */
-router.get("/history", async (req, res, next) => {
+router.get("/", async (req, res, next) => {
   const { email } = req.query;
 
   if (!email) {
@@ -33,18 +32,35 @@ router.get("/history", async (req, res, next) => {
             destination: true,
           },
         },
+        carRentalRequest: {
+          include: { car: true },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    // Support legacy format or update FE. Let's return both for compatibility.
     res.json({
       flights: transactions
-        .filter((t) => t.serviceType === "FLIGHT")
-        .map((t) => t.flightBooking),
+        .filter((t) => t.serviceType === "FLIGHT" && t.flightBooking)
+        .map((t) => ({
+          ...t.flightBooking,
+          transactionStatus: t.status,
+          totalSales: t.totalSales,
+        })),
       ferries: transactions
-        .filter((t) => t.serviceType === "FERRY")
-        .map((t) => t.ferryBooking),
+        .filter((t) => t.serviceType === "FERRY" && t.ferryBooking)
+        .map((t) => ({
+          ...t.ferryBooking,
+          transactionStatus: t.status,
+          totalSales: t.totalSales,
+        })),
+      cars: transactions
+        .filter((t) => t.serviceType === "CAR_RENTAL" && t.carRentalRequest)
+        .map((t) => ({
+          ...t.carRentalRequest,
+          transactionStatus: t.status,
+          totalSales: t.totalSales,
+        })),
     });
   } catch (error) {
     next(error);
