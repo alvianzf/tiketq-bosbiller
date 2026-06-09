@@ -39,22 +39,27 @@ const getCountriesList = async (token) => {
 
 // Helper: Fuzzy Country GUID Matcher
 const findCountryGuid = (countriesList, searchStr) => {
-  if (!searchStr) return "2e8c602d-710a-4764-ff91-08d7934c8bf2"; // default to Indonesia Guid
-  const cleanStr = searchStr.trim().toLowerCase();
+  const cleanStr = (searchStr || "").trim().toLowerCase();
 
-  let match = countriesList.find(c => c.name?.toLowerCase() === cleanStr);
-  if (match) return match.id;
+  if (cleanStr) {
+    let match = countriesList.find(c => c.name?.toLowerCase() === cleanStr);
+    if (match) return match.id;
 
-  match = countriesList.find(c => c.code?.toLowerCase() === cleanStr);
-  if (match) return match.id;
+    match = countriesList.find(c => c.code?.toLowerCase() === cleanStr);
+    if (match) return match.id;
 
-  match = countriesList.find(c => c.name?.toLowerCase().includes(cleanStr) || cleanStr.includes(c.name?.toLowerCase()));
-  if (match) return match.id;
+    match = countriesList.find(c => c.name?.toLowerCase().includes(cleanStr) || cleanStr.includes(c.name?.toLowerCase()));
+    if (match) return match.id;
+  }
 
-  const indonesianMatch = countriesList.find(c => c.name?.toLowerCase() === "indonesia");
-  if (indonesianMatch) return indonesianMatch.id;
+  // Only fall back to Indonesia for empty/missing nationality (domestic passengers)
+  if (!cleanStr) {
+    const indonesianMatch = countriesList.find(c => c.name?.toLowerCase() === "indonesia");
+    if (indonesianMatch) return indonesianMatch.id;
+    return countriesList[0]?.id || "2e8c602d-710a-4764-ff91-08d7934c8bf2";
+  }
 
-  return countriesList[0]?.id || "2e8c602d-710a-4764-ff91-08d7934c8bf2";
+  throw new Error(`Nationality not recognized: "${searchStr}". Please provide a valid country name.`);
 };
 
 // Helper: Format Date to YYYY-MM-DD
@@ -69,15 +74,10 @@ const formatDate = (dateStr) => {
   return `${year}-${month}-${day}`;
 };
 
-// Helper: Calculate Passport Issue Date (Expiry minus 5 years)
-const getPassportIssueDate = (expiryDateStr) => {
-  if (!expiryDateStr) return formatDate(new Date());
-  const expiryDate = new Date(expiryDateStr);
-  if (isNaN(expiryDate.getTime())) return formatDate(new Date());
-
-  const issueDate = new Date(expiryDate.getTime());
-  issueDate.setFullYear(expiryDate.getFullYear() - 5);
-  return formatDate(issueDate);
+// Helper: Format passport issue date — returns null if not provided so callers can error early
+const getPassportIssueDate = (issueDateStr) => {
+  if (!issueDateStr) return null;
+  return formatDate(issueDateStr);
 };
 
 // Helper: Map Title to Gender Index (0 = Male, 1 = Female)
@@ -193,6 +193,11 @@ router.post("/", ensureToken, async (req, res, next) => {
 
     // 4. Add Passengers to Booking in parallel
     const passengerPromises = passengers.map(async (p) => {
+      const issueDate = getPassportIssueDate(p.passportIssueDate);
+      if (!issueDate) {
+        throw new Error(`Passport issue date is required for passenger ${p.firstName} ${p.lastName}.`);
+      }
+
       const nationalityGuid = findCountryGuid(countriesList, p.nationality);
       const issuingCountryGuid = findCountryGuid(countriesList, p.issuingCountry);
 
@@ -204,7 +209,7 @@ router.post("/", ensureToken, async (req, res, next) => {
           gender: getGenderValue(p.title),
           dateOfBirth: formatDate(p.dateOfBirth),
           placeOfBirth: null,
-          issueDate: getPassportIssueDate(p.passportExpiry),
+          issueDate,
           expiryDate: formatDate(p.passportExpiry),
           nationalityID: nationalityGuid,
           issuanceCountryID: issuingCountryGuid

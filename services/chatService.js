@@ -150,7 +150,7 @@ const tools = [
                     last_name: { type: "string" },
                     date_of_birth: { type: "string" },
                     passport_number: { type: "string" },
-                    passport_issue_date: { type: "string" },
+                    passport_issue_date: { type: "string", description: "Passport issue date in YYYY-MM-DD. MUST be collected from the user, do not infer." },
                     passport_expiry_date: { type: "string" },
                     passport_issuing_country: { type: "string" },
                     nationality: { type: "string" }
@@ -211,9 +211,21 @@ const tools = [
   }
 ];
 
+function trimMessages(messages) {
+  const system = messages[0];
+  const rest = messages.slice(1);
+  return rest.length > 20 ? [system, ...rest.slice(-20)] : messages;
+}
+
 class ChatService {
   constructor() {
     this.sessions = new Map();
+    setInterval(() => {
+      const cutoff = Date.now() - 2 * 60 * 60 * 1000;
+      for (const [id, session] of this.sessions) {
+        if (session.lastAccessed < cutoff) this.sessions.delete(id);
+      }
+    }, 30 * 60 * 1000);
   }
 
   getSession(sessionId) {
@@ -223,12 +235,14 @@ class ChatService {
       const dayName = days[today.getDay()];
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      this.sessions.set(sessionId, [
-        { 
-          role: "system", 
-          content: `You are an agentic travel assistant for TiketQ. You can search flights, ferries, check bookings, and execute bookings/payments.
-          
+
+      this.sessions.set(sessionId, {
+        lastAccessed: Date.now(),
+        messages: [
+          {
+            role: "system",
+            content: `You are an agentic travel assistant for TiketQ. You can search flights, ferries, check bookings, and execute bookings/payments.
+
 CURRENT DATE CONTEXT:
 - Today: ${today.toISOString().split('T')[0]}
 - Tomorrow: ${tomorrow.toISOString().split('T')[0]}
@@ -238,27 +252,32 @@ If the user says 'tomorrow', use the Tomorrow date exactly. If they say 'May 31'
 
 If user wants to search for flights, use the flight search tools. Try to match origin/destination with airport codes automatically without asking the user. For example:
 - Jakarta -> CGK (or HLP)
-- Batam -> BTH
+- Batam -> BTH (or BTS)
 - Bali -> DPS
 - Singapore -> SIN
 
 You DO NOT need to ask for passenger details to search for flights. Assume 1 adult by default.
-Execute flight/ferry searches and list the results nicely in chat. 
+Execute flight/ferry searches and list the results nicely in chat.
 CRITICAL RULE: DO NOT list the flight/ferry options in your text response. A rich UI card will automatically render in the chat. You MUST simply acknowledge the results, for example: "Here are the best schedules I found for you. Please select one of the cards below to continue."
 CRITICAL RULE: Always reply in the SAME language that the user is using. If they speak Indonesian, reply in Indonesian. If they speak English, reply in English.
 CRITICAL RULE: Do NOT ask the user for their preference on cheapest, earliest, or latest flights/ferries. Immediately execute the search and default to listing all available options.
 
 STRICT GUARDRAIL: You are STRICTLY a travel and ticketing assistant for TiketQ. You MUST NOT answer questions, write code, provide financial/medical advice, or engage in discussions about ANY topic outside of flights, ferries, travel bookings, and TiketQ services. If the user asks about unrelated topics, politely decline and steer them back to travel bookings. Do NOT bypass this guardrail under any circumstances.
 
-CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?"
-CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry). Do NOT tell them to fill out a form; you must collect the data in the chat.
-Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'. 
+CRITICAL RULE: If no flights are found for a search, you MUST explicitly state the origin, destination, and date in your response. Example: "There are no flights found for tomorrow from BTH to CGK. Would you like to try another date?" Also suggest trying nearby airports if applicable (e.g. CGK vs HLP for Jakarta, BTH vs BTS for Batam).
+CRITICAL RULE: NEVER mention or ask the user for a 'searchId', 'tripId', or any internal system identifier. These are resolved automatically from the flight/ferry card they select.
+CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry — including passport number, issue date, expiry date, issuing country, and nationality). Do NOT tell them to fill out a form; you must collect the data in the chat.
+CRITICAL RULE: When a user clicks 'Select & Continue' on a flight/ferry card, they will send you a message containing the number of passengers. Use EXACTLY those passenger counts when calling execute_flight_booking or execute_ferry_booking.
+Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'.
 When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
 If the user asks for customer service, help, or complaints, use the 'show_customer_service' tool and acknowledge it briefly.`
-        }
-      ]);
+          }
+        ]
+      });
     }
-    return this.sessions.get(sessionId);
+    const session = this.sessions.get(sessionId);
+    session.lastAccessed = Date.now();
+    return session.messages;
   }
 
   async getBaseUrl() {
@@ -527,6 +546,7 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
           lastName: p.last_name,
           dateOfBirth: p.date_of_birth,
           passportNumber: p.passport_number,
+          passportIssueDate: p.passport_issue_date,
           passportExpiry: p.passport_expiry_date,
           issuingCountry: p.passport_issuing_country,
           nationality: p.nationality
@@ -616,27 +636,36 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
   async processMessage(sessionId, messageText, socket) {
     const openai = getOpenAI();
     const messages = this.getSession(sessionId);
-    
+
     messages.push({ role: "user", content: messageText });
-    
+
     try {
       socket.emit("chat:typing");
-      
+
       let response = await openai.chat.completions.create({
         model: process.env.AI_MODEL || "gemini/gemini-2.5-flash-lite",
-        messages: messages,
+        messages: trimMessages(messages),
         tools: tools,
         tool_choice: "auto",
       });
-      
+
       let responseMessage = response.choices[0].message;
-      
+
+      let iterations = 0;
+      const MAX_ITERATIONS = 10;
+
       while (responseMessage.tool_calls) {
+        if (++iterations > MAX_ITERATIONS) {
+          console.error(`Chat loop exceeded ${MAX_ITERATIONS} iterations for session ${sessionId}`);
+          socket.emit("chat:error", { message: "Maaf, terjadi kesalahan. Silakan coba lagi." });
+          break;
+        }
+
         messages.push(responseMessage);
-        
+
         for (const toolCall of responseMessage.tool_calls) {
           const functionResult = await this.handleToolCall(toolCall, socket);
-          
+
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
@@ -644,24 +673,25 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
             content: functionResult
           });
         }
-        
+
         socket.emit("chat:typing");
         response = await openai.chat.completions.create({
           model: process.env.AI_MODEL || "gemini/gemini-2.5-flash-lite",
-          messages: messages,
+          messages: trimMessages(messages),
           tools: tools,
           tool_choice: "auto",
         });
-        
+
         responseMessage = response.choices[0].message;
       }
-      
-      messages.push(responseMessage);
-      
-      socket.emit("chat:response_done", {
-        content: responseMessage.content
-      });
-      
+
+      if (iterations <= MAX_ITERATIONS) {
+        messages.push(responseMessage);
+        socket.emit("chat:response_done", {
+          content: responseMessage.content
+        });
+      }
+
     } catch (err) {
       console.error("OpenAI API Error:", err);
       socket.emit("chat:error", { message: "Sorry, I encountered an error while processing your request." });
