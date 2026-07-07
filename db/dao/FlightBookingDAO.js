@@ -166,7 +166,16 @@ class FlightBookingDAO {
     }
     return await prisma.flightBooking.update({
       where: { id: booking.id },
-      data: { payment_status: true },
+      data: {
+        payment_status: true,
+        ticketIssued: true,
+        transaction: {
+          update: {
+            payment_status: true,
+            status: "PAID",
+          },
+        },
+      },
     });
   }
 

@@ -269,6 +269,27 @@ Returns all transactions from the `transactions` table, including nested `flight
 
 ---
 
+### `PATCH /api/admin/transactions/:id/cancel` — Cancel Transaction
+### `PATCH /api/admin/transactions/:id/refund` — Refund Transaction
+Internal status change only — does **not** call DANA's live Cancel/Refund Order API (see `docs/DANA_INTEGRATION.md`). Blocked with `409` if the linked flight/ferry booking has `ticketIssued: true`; car rental transactions (`serviceType: "CAR_RENTAL"`) are always exempt from this check.
+
+**Response 200:**
+```json
+{ "status": 200, "message": "Transaction marked as CANCELLED", "data": { "id": 23, "status": "CANCELLED", "...": "..." } }
+```
+
+**Response 409** (ticket already issued):
+```json
+{ "status": 409, "message": "Cannot cancel/refund — ticket has already been issued" }
+```
+
+**Response 404:**
+```json
+{ "status": 404, "message": "Transaction not found" }
+```
+
+---
+
 ### `GET /api/admin/stats` — Dashboard Statistics
 Returns aggregated metrics calculated in real-time via Prisma queries.
 
@@ -426,4 +447,42 @@ Called asynchronously by Midtrans after a payment is captured/settled. **No auth
 **Response 200:**
 ```json
 { "status": "OK" }
+```
+
+---
+
+### `POST /api/dana-notify-callback` — DANA Finish Notify Webhook
+Called by DANA after a payment attempt completes (registered as the merchant's "Finish Payment URL" in the DANA dashboard). Verified against DANA's SNAP signature (`dana-node/webhook/v1`'s `WebhookParser`, using DANA's own sandbox public key — not ours) — requests with a missing/invalid `X-SIGNATURE` get `401`. See `docs/DANA_INTEGRATION.md` for the full integration writeup.
+
+**Body sent by DANA** (`latestTransactionStatus`: `"00"` = success, `"05"` = cancelled/expired):
+```json
+{
+  "originalPartnerReferenceNo": "<our bookingCode/bookingNo>",
+  "originalReferenceNo": "20260707...",
+  "merchantId": "216620080012019918983",
+  "amount": { "value": "10000.00", "currency": "IDR" },
+  "latestTransactionStatus": "00",
+  "createdTime": "2026-07-07T19:00:00+07:00",
+  "finishedTime": "2026-07-07T19:00:01+07:00"
+}
+```
+
+**Business Logic:**
+- `latestTransactionStatus: "00"` → marks the linked FerryBooking/FlightBooking paid (same DAO methods the Midtrans webhook uses) and emits `booking:update`.
+- `latestTransactionStatus: "05"` → acknowledged only, no DB write (booking was never paid).
+- In sandbox only, `amount.value === "11012.00"` triggers DANA's own mandatory "partner simulates an internal server error" compliance scenario — responds `5005601`/500 instead of processing.
+
+**Response 200:**
+```json
+{ "responseCode": "2005600", "responseMessage": "Successful" }
+```
+
+**Response 500** (processing error, or the sandbox-only simulated-error scenario above):
+```json
+{ "responseCode": "5005601", "responseMessage": "Internal Server Error" }
+```
+
+**Response 401** (invalid/missing signature):
+```json
+{ "message": "Unauthorized. Invalid Signature" }
 ```

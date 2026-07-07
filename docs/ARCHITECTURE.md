@@ -5,6 +5,13 @@ This document describes the database architecture and data access patterns for `
 ## The DAO Layer Rule
 All database calls must be wrapped in Data Access Objects located in `/db/dao/`. Controllers (`routes/*.js`) must `require` the DAO class and call static methods. They must NEVER `require("../../db/index")` directly to execute raw queries.
 
+> `routes/api/admin/index.js` predates this rule for several endpoints (e.g. `GET /admin/transactions` queries `prisma.transaction` directly) — not a pattern to copy. New admin code should go through `TransactionDAO` (`db/dao/TransactionDAO.js`), which has `findById` and `updateStatus`.
+
+### Booking status vs. ticket issuance
+`Transaction.status` is the canonical field the admin dashboard reads for the status badge (`PENDING` → `PAID` → `CANCELLED`/`REFUNDED`). It's kept in sync with each booking's `payment_status` inside the DAO methods that flip payment to true (`FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus`, `FerryBookingDAO.updatePaymentStatusByNo`) — do not update `payment_status` on a booking without also cascading to its linked `Transaction`.
+
+`ticketIssued` (flight/ferry only) tracks whether the ticket has actually been issued, separately from payment — in this codebase they happen synchronously today, so `ticketIssued` flips `true` at the same moment as `payment_status`. It gates `PATCH /api/admin/transactions/:id/cancel` and `/refund`: once `true`, cancel/refund is blocked for that booking. Car rentals have no `ticketIssued` field and are always exempt from the block.
+
 ## Prisma Schema Exhaustive Map
 
 ```prisma
@@ -27,7 +34,7 @@ model Transaction {
   serviceFee         Decimal?          @default(0)
   totalSales         Decimal?          @default(0)
   payment_status     Boolean           @default(false)
-  status             String?           @default("PENDING")
+  status             String?           @default("PENDING") // "PENDING" | "PAID" | "CANCELLED" | "REFUNDED"
   flightBookingId    Int?              @unique
   ferryBookingId     Int?              @unique
   carRentalRequestId Int?              @unique
@@ -51,6 +58,7 @@ model FlightBooking {
   name           String?
   book_date      DateTime     @default(now())
   payment_status Boolean      @default(false)
+  ticketIssued   Boolean      @default(false) // set true in the same DAO call that flips payment_status true
   passengers     Passenger[]
   transaction    Transaction?
   @@map("flight_bookings")
@@ -67,6 +75,7 @@ model FerryBooking {
   mobile_number  String?
   status         String?      @default("PENDING")
   payment_status Boolean      @default(false)
+  ticketIssued   Boolean      @default(false) // set true in the same DAO call that flips payment_status true
   destination    Terminal?    @relation("DestinationTerminal", fields: [destinationId], references: [id])
   origin         Terminal?    @relation("OriginTerminal", fields: [originId], references: [id])
   passengers     Passenger[]

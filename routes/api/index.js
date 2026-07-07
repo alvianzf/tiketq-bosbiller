@@ -23,6 +23,8 @@ Object.entries(domains).forEach(([key, value]) => {
   router.use(`/${key}`, value);
 });
 
+router.use("/dana-notify-callback", require("./dana-notify-callback"));
+
 /**
  * Root endpoint
  */

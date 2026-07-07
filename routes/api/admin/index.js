@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { prisma } = require("../../../db/index");
 const UserDAO = require("../../../db/dao/UserDAO");
+const TransactionDAO = require("../../../db/dao/TransactionDAO");
 const authMiddleware = require("../../../middleware/authMiddleware");
 const adminMiddleware = require("../../../middleware/adminMiddleware");
 const serverRouter = require("./server");
@@ -39,6 +40,41 @@ router.get("/transactions", async (req, res, next) => {
     next(err);
   }
 });
+
+// Cancel/refund a transaction. Blocked once the ticket has been issued for
+// flight/ferry bookings (car rentals are exempt — no ticketIssued concept for them).
+async function updateTransactionStatus(req, res, next, newStatus) {
+  try {
+    const transaction = await TransactionDAO.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ status: 404, message: "Transaction not found" });
+    }
+
+    const ticketIssued =
+      transaction.flightBooking?.ticketIssued || transaction.ferryBooking?.ticketIssued;
+    if (transaction.serviceType !== "CAR_RENTAL" && ticketIssued) {
+      return res.status(409).json({
+        status: 409,
+        message: "Cannot cancel/refund — ticket has already been issued",
+      });
+    }
+
+    const updated = await TransactionDAO.updateStatus(req.params.id, newStatus);
+    res.json({ status: 200, message: `Transaction marked as ${newStatus}`, data: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PATCH /api/admin/transactions/:id/cancel
+router.patch("/transactions/:id/cancel", (req, res, next) =>
+  updateTransactionStatus(req, res, next, "CANCELLED"),
+);
+
+// PATCH /api/admin/transactions/:id/refund
+router.patch("/transactions/:id/refund", (req, res, next) =>
+  updateTransactionStatus(req, res, next, "REFUNDED"),
+);
 
 // Helper to prune server.log lines older than 30 days
 const pruneLogFile = async (logPath) => {

@@ -36,7 +36,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   })
 );
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "10mb", verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 app.use(
   express.urlencoded({ extended: true, limit: "10mb", parameterLimit: 10000 }),
 );

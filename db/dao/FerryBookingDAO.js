@@ -94,9 +94,10 @@ class FerryBookingDAO {
   async updatePaymentStatusByNo(bookingNo, payment_status) {
     return await prisma.ferryBooking.update({
       where: { bookingNo },
-      data: { 
-        payment_status, 
+      data: {
+        payment_status,
         status: payment_status ? "PAID" : "PENDING",
+        ticketIssued: payment_status,
         transaction: {
           update: {
             payment_status,
