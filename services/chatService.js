@@ -168,18 +168,15 @@ const tools = [
   {
     type: "function",
     function: {
-      name: "generate_midtrans_payment",
-      description: "Generate a real Midtrans payment token for a given booking.",
+      name: "generate_dana_payment",
+      description: "Generate a native DANA payment (QRIS by default, or a bank virtual account) for a given booking. The amount is taken from the stored booking on the server.",
       parameters: {
         type: "object",
         properties: {
           bookingCode: { type: "string" },
-          amount: { type: "number" },
-          name: { type: "string" },
-          email: { type: "string" },
-          phone: { type: "string" }
+          payMethod: { type: "string", enum: ["QRIS", "BCA", "BNI", "BRI", "MANDIRI"], description: "Defaults to QRIS if omitted." }
         },
-        required: ["bookingCode", "amount"]
+        required: ["bookingCode"]
       }
     }
   },
@@ -269,7 +266,7 @@ CRITICAL RULE: NEVER mention or ask the user for a 'searchId', 'tripId', or any 
 CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their details conversationally first: Full Name, Email, Phone Number, Date of Birth (and Passport Details if booking a Ferry — including passport number, issue date, expiry date, issuing country, and nationality). Do NOT tell them to fill out a form; you must collect the data in the chat.
 CRITICAL RULE: When a user clicks 'Select & Continue' on a flight/ferry card, they will send you a message containing the number of passengers. Use EXACTLY those passenger counts when calling execute_flight_booking or execute_ferry_booking.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'.
-When user wants to pay, use 'generate_midtrans_payment' tool. Always be concise.
+When user wants to pay, use 'generate_dana_payment' tool. Always be concise.
 If the user asks for customer service, help, or complaints, use the 'show_customer_service' tool and acknowledge it briefly.`
           }
         ]
@@ -573,41 +570,28 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
           return JSON.stringify({ error: res.data?.message || "Booking failed" });
         }
       }
-      else if (name === "generate_midtrans_payment") {
-        const orderId = `ORDER-${args.bookingCode}-${Math.round((new Date()).getTime() / 1000)}`;
-        const payload = {
-          transaction_details: {
-            order_id: orderId,
-            gross_amount: parseInt(args.amount)
-          },
-          customer_details: {
-            name: args.name || "Customer",
-            email: args.email || "test@tiketq.com",
-            phone: args.phone || "08123456789"
-          },
-          item_details: [
-            {
-              id: args.bookingCode,
-              price: parseInt(args.amount),
-              quantity: 1,
-              name: "TiketQ Booking"
-            }
-          ]
-        };
-        const res = await axios.post(`${baseUrl}/api/flight/payment/midtrans`, payload);
-        
-        if (res.data?.token) {
+      else if (name === "generate_dana_payment") {
+        // Amount is derived server-side from the stored booking; the client
+        // never supplies it. Chat defaults to QRIS.
+        const res = await axios.post(`${baseUrl}/api/dana/create-order`, {
+          bookingNo: args.bookingCode,
+          payMethod: args.payMethod || "QRIS",
+        });
+
+        if (res.data?.paymentCode) {
           socket.emit("chat:tool_result", {
-            type: "qris_payment",
+            type: "dana_payment",
             data: {
               bookingCode: args.bookingCode,
-              amount: args.amount,
-              token: res.data.token
+              kind: res.data.kind,
+              vaNumber: res.data.vaNumber,
+              qrContent: res.data.qrContent,
+              expiryTime: res.data.expiryTime,
             }
           });
-          return JSON.stringify({ success: true, message: "Payment UI presented to user" });
+          return JSON.stringify({ success: true, message: "DANA payment presented to user" });
         } else {
-          return JSON.stringify({ error: "Failed to generate payment token" });
+          return JSON.stringify({ error: "Failed to generate DANA payment" });
         }
       }
       else if (name === "get_booking_info") {

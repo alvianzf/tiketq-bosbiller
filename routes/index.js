@@ -29,7 +29,6 @@ router.get('/', (req, res) => {
  */
 const rateLimiter = require('../middleware/rate-limiter');
 router.use('/api', rateLimiter({ max: 120, windowMs: 60000 }), require('./api'));
-router.use('/hooks', require('./webhooks'));
 
 /**
  * Exporting the router instance to be used in the application.

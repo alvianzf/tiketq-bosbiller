@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 const getRedisClient = require("../../../utils/redisClient");
 const flightRequest = require("../../../utils/axios-request");
 const ferryUtils = require("../ferry/utils");
-const midtransClient = require("midtrans-client");
 
 /**
  * GET /api/health
@@ -20,7 +19,7 @@ router.get("/", async (req, res) => {
       redis: { status: "unknown" },
       flightApi: { status: "unknown" },
       ferryApi: { status: "unknown" },
-      midtrans: { status: "unknown" },
+      dana: { status: "unknown" },
     },
   };
 
@@ -74,22 +73,14 @@ router.get("/", async (req, res) => {
       })
   );
 
-  // 5. Midtrans Check
+  // 5. DANA Check (config presence — no outbound call)
   checks.push(
     (async () => {
-      try {
-        const serverKey = process.env.MIDTRANS_SERVER_KEY || "";
-        const isProduction = serverKey ? !serverKey.startsWith("SB-") : false;
-        const snap = new midtransClient.Snap({
-          isProduction: isProduction,
-          serverKey: serverKey,
-          clientKey: process.env.MIDTRANS_CLIENT_KEY || "",
-        });
-        // Just check if we can initialize; real status check might needing hitting an endpoint
-        health.services.midtrans = { status: "configured" };
-      } catch (err) {
-        health.services.midtrans = { status: "error", error: err.message };
-      }
+      const configured = !!(process.env.DANA_MERCHANT_ID && process.env.DANA_CLIENT_ID && process.env.DANA_PRIVATE_KEY);
+      health.services.dana = configured
+        ? { status: "configured", env: process.env.DANA_ENV || "sandbox" }
+        : { status: "misconfigured" };
+      if (!configured) health.status = "degraded";
     })()
   );
 

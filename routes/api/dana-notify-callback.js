@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { WebhookParser } = require('dana-node/webhook/v1');
-const FlightBookingDAO = require('../../db/dao/FlightBookingDAO');
 const FerryBookingDAO = require('../../db/dao/FerryBookingDAO');
 const { dana } = require('../../services/danaService');
+const { fulfillFerryBooking, fulfillFlightBooking } = require('../../services/bookingFulfillment');
 
 // In sandbox, WebhookParser verifies against DANA's own baked-in sandbox public key
 // (DANA signs the notify with its key, not ours). For production, set DANA_WEBHOOK_PUBLIC_KEY
@@ -83,21 +83,14 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ responseCode: '5005601', responseMessage: 'Internal Server Error' });
       }
 
+      // Ferry vs flight is determined by which booking table owns this bookingNo.
+      // Fulfillment (mark PAID, issue tickets/vouchers, email) is idempotent, so a
+      // duplicate notify delivery is a no-op.
       const ferryBooking = await FerryBookingDAO.findBookingByNo(bookingNo);
-      if (ferryBooking && ferryBooking.status !== 'PAID') {
-        await FerryBookingDAO.updatePaymentStatusByNo(bookingNo, true);
+      if (ferryBooking) {
+        await fulfillFerryBooking(bookingNo);
       } else {
-        const flightBookings = await FlightBookingDAO.findBookingsByBookNo(bookingNo);
-        const flightBooking = flightBookings && flightBookings[0];
-        if (flightBooking && !flightBooking.payment_status) {
-          await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(bookingNo);
-        }
-      }
-
-      try {
-        require('../../socket').getIo().emit('booking:update', { bookingNo });
-      } catch (socketErr) {
-        console.error('Failed to emit socket event:', socketErr.message);
+        await fulfillFlightBooking(bookingNo);
       }
     }
     // latestTransactionStatus '05' (closed/expired) requires no DB action beyond acknowledging.

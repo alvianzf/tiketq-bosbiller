@@ -93,6 +93,4 @@ router.get("/", (req, res) => {
   });
 });
 
-router.use("/midtrans", require("./midtrans"));
-
 module.exports = router;

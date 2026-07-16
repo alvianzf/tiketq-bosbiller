@@ -157,6 +157,50 @@ class FlightBookingDAO {
     });
   }
 
+  /**
+   * Atomically claim an unpaid flight booking for settlement. The updateMany
+   * guard (payment_status:false) ensures only one concurrent webhook delivery
+   * proceeds to issue the ticket; duplicates see count 0 and get null.
+   * Marks payment_status (the money is captured by the gateway) but NOT
+   * ticketIssued — that is set only after the provider issues successfully.
+   * Returns the claimed booking, or null if already paid / not found.
+   */
+  async claimForPayment(bookingCode) {
+    const res = await prisma.flightBooking.updateMany({
+      where: { bookingCode, payment_status: false },
+      data: { payment_status: true },
+    });
+    if (res.count === 0) return null;
+
+    const booking = await prisma.flightBooking.findFirst({
+      where: { bookingCode },
+      include: { transaction: true },
+    });
+    if (booking?.transaction) {
+      await prisma.transaction.update({
+        where: { id: booking.transaction.id },
+        data: { payment_status: true, status: "PAID" },
+      });
+    }
+    return booking;
+  }
+
+  /** Mark a flight booking's ticket as issued after successful provider issuance. */
+  async markTicketIssued(bookingCode) {
+    return await prisma.flightBooking.updateMany({
+      where: { bookingCode },
+      data: { ticketIssued: true },
+    });
+  }
+
+  /** Flag a settled flight booking whose provider ticket issuance failed. */
+  async markTicketFailed(bookingCode) {
+    return await prisma.transaction.updateMany({
+      where: { bookingCode },
+      data: { status: "TICKET_FAILED" },
+    });
+  }
+
   async findBookingByCodeAndUpdatePaymentStatus(bookingCode) {
     const booking = await prisma.flightBooking.findFirst({
       where: { bookingCode },
