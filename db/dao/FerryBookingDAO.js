@@ -91,6 +91,33 @@ class FerryBookingDAO {
     });
   }
 
+  /**
+   * Atomically claim an unpaid ferry booking for settlement. The updateMany
+   * guard (payment_status:false) means only the first concurrent caller flips
+   * the row; a duplicate webhook delivery sees count 0 and gets null back.
+   * Returns the full booking on a successful claim, or null if already
+   * paid / not found.
+   */
+  async claimForPayment(bookingNo) {
+    const res = await prisma.ferryBooking.updateMany({
+      where: { bookingNo, payment_status: false },
+      data: { payment_status: true, status: "PAID", ticketIssued: true },
+    });
+    if (res.count === 0) return null;
+
+    const booking = await prisma.ferryBooking.findUnique({
+      where: { bookingNo },
+      include: { passengers: true, origin: true, destination: true, transaction: true },
+    });
+    if (booking?.transaction) {
+      await prisma.transaction.update({
+        where: { id: booking.transaction.id },
+        data: { payment_status: true, status: "PAID" },
+      });
+    }
+    return booking;
+  }
+
   async updatePaymentStatusByNo(bookingNo, payment_status) {
     return await prisma.ferryBooking.update({
       where: { bookingNo },

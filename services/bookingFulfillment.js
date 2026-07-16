@@ -3,11 +3,12 @@ const FerryBookingDAO = require("../db/dao/FerryBookingDAO");
 const apiService = require("./apiService");
 
 /**
- * Post-payment fulfillment, extracted from the Midtrans webhook so any settled
- * gateway (DANA, and previously Midtrans) issues tickets through one code path.
+ * Post-payment fulfillment for any settled gateway (DANA), through one code path.
  *
- * Each function is a no-op if the booking is already PAID, so duplicate webhook
- * deliveries do not double-issue tickets or re-send emails.
+ * Idempotency is enforced by an atomic claim (DAO updateMany guarded on
+ * payment_status:false): only the first concurrent webhook delivery wins the
+ * claim and runs issuance/email; duplicates get null and no-op. This is
+ * race-safe, unlike a check-then-act read.
  */
 
 function emitBookingUpdate(bookingNo) {
@@ -24,12 +25,10 @@ function emitBookingUpdate(bookingNo) {
  * already paid (or not found) and nothing was done.
  */
 async function fulfillFerryBooking(bookingNo) {
-  const booking = await FerryBookingDAO.findBookingByNo(bookingNo);
-  if (!booking || booking.status === 'PAID') {
-    return { settled: false };
+  const updatedBooking = await FerryBookingDAO.claimForPayment(bookingNo);
+  if (!updatedBooking) {
+    return { settled: false }; // already paid or not found
   }
-
-  const updatedBooking = await FerryBookingDAO.updatePaymentStatusByNo(bookingNo, true);
   console.log(`Successfully settled ferry booking ${bookingNo}`);
   emitBookingUpdate(bookingNo);
 
@@ -78,10 +77,12 @@ async function fulfillFerryBooking(bookingNo) {
  * { settled, ticketFailed }.
  */
 async function fulfillFlightBooking(bookingCode) {
-  const bookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
-  const booking = bookings && bookings.length > 0 ? bookings[0] : null;
-  if (!booking || booking.payment_status) {
-    return { settled: false };
+  // Atomically claim the payment first so only one webhook delivery issues the
+  // ticket. The money is already captured by the gateway, so payment_status is
+  // set here; ticketIssued is only set after the provider confirms issuance.
+  const booking = await FlightBookingDAO.claimForPayment(bookingCode);
+  if (!booking) {
+    return { settled: false }; // already paid or not found
   }
 
   // nominal echoes the booking total the provider expects for the issue call.
@@ -100,17 +101,14 @@ async function fulfillFlightBooking(bookingCode) {
   }
 
   if (!issueSuccess) {
+    // Payment is captured but the ticket could not be issued: flag for ops
+    // reconciliation. payment_status stays true (the customer did pay).
     console.error(`CRITICAL: Payment settled for booking ${bookingCode}, but provider ticket issuance failed.`);
-    try {
-      const { prisma } = require("../db/index");
-      await prisma.transaction.updateMany({ where: { bookingCode }, data: { status: "TICKET_FAILED" } });
-    } catch (dbErr) {
-      console.error("Failed to update transaction status to TICKET_FAILED:", dbErr.message);
-    }
+    await FlightBookingDAO.markTicketFailed(bookingCode);
     return { settled: false, ticketFailed: true };
   }
 
-  await FlightBookingDAO.findBookingByCodeAndUpdatePaymentStatus(bookingCode);
+  await FlightBookingDAO.markTicketIssued(bookingCode);
   console.log(`Successfully settled booking ${bookingCode}`);
   emitBookingUpdate(bookingCode);
 
