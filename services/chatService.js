@@ -169,11 +169,12 @@ const tools = [
     type: "function",
     function: {
       name: "generate_dana_payment",
-      description: "Generate a DANA payment link for a given booking. The amount is taken from the stored booking on the server.",
+      description: "Generate a native DANA payment (QRIS by default, or a bank virtual account) for a given booking. The amount is taken from the stored booking on the server.",
       parameters: {
         type: "object",
         properties: {
-          bookingCode: { type: "string" }
+          bookingCode: { type: "string" },
+          payMethod: { type: "string", enum: ["QRIS", "BCA", "BNI", "BRI", "MANDIRI"], description: "Defaults to QRIS if omitted." }
         },
         required: ["bookingCode"]
       }
@@ -571,22 +572,26 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
       }
       else if (name === "generate_dana_payment") {
         // Amount is derived server-side from the stored booking; the client
-        // never supplies it.
+        // never supplies it. Chat defaults to QRIS.
         const res = await axios.post(`${baseUrl}/api/dana/create-order`, {
           bookingNo: args.bookingCode,
+          payMethod: args.payMethod || "QRIS",
         });
 
-        if (res.data?.redirectUrl) {
+        if (res.data?.paymentCode) {
           socket.emit("chat:tool_result", {
             type: "dana_payment",
             data: {
               bookingCode: args.bookingCode,
-              redirectUrl: res.data.redirectUrl,
+              kind: res.data.kind,
+              vaNumber: res.data.vaNumber,
+              qrContent: res.data.qrContent,
+              expiryTime: res.data.expiryTime,
             }
           });
-          return JSON.stringify({ success: true, message: "DANA payment link presented to user" });
+          return JSON.stringify({ success: true, message: "DANA payment presented to user" });
         } else {
-          return JSON.stringify({ error: "Failed to generate DANA payment link" });
+          return JSON.stringify({ error: "Failed to generate DANA payment" });
         }
       }
       else if (name === "get_booking_info") {
