@@ -27,6 +27,16 @@ if (missing.length > 0) {
   fail(`missing env vars: ${missing.join(', ')}`);
 }
 
+const env = (process.env.DANA_ENV || process.env.ENV || '').trim().toLowerCase();
+const isSandbox = env === 'sandbox' || env === '';
+if (!isSandbox) {
+  if (!process.env.DANA_WEBHOOK_PUBLIC_KEY && !process.env.DANA_WEBHOOK_PUBLIC_KEY_PATH) {
+    // Not fatal: without DANA's public key the notify webhook falls back to
+    // confirming each notification via queryPayment (see routes/api/dana-notify-callback.js).
+    console.warn('[dana-preflight] WARN: DANA_WEBHOOK_PUBLIC_KEY not set; webhook will confirm notifications via queryPayment instead of signature verification.');
+  }
+}
+
 try {
   const signature = DanaSignatureUtil.generateSnapB2BScenarioSignature(
     'POST',
