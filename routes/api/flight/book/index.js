@@ -3,6 +3,27 @@ const apiService = require("../../../../services/apiService");
 const FlightBookingDAO = require("../../../../db/dao/FlightBookingDAO");
 const router = express.Router();
 
+// Provider (Bosbiller "Pesawat" API) return codes worth translating into clear,
+// action-oriented messages. Many raw messages are vague ("Booking Gagal") — the
+// common cause is a stale/consumed searchId, so those steer the user to search
+// again. Codes not listed here fall back to the provider's own message.
+const BOOK_RC_MESSAGES = {
+  "15": "Booking ini sudah pernah dibuat. Silakan cek pesanan Anda atau lakukan pencarian ulang.",
+  "18": "Booking gagal. Silakan lakukan pencarian jadwal ulang dan coba lagi.",
+  "23": "Data penerbangan sudah berubah. Silakan lakukan pencarian jadwal ulang.",
+  "38": "Jadwal penerbangan sudah tidak tersedia. Silakan lakukan pencarian ulang.",
+  "42": "Harga tiket telah berubah. Silakan lakukan pencarian ulang untuk melihat harga terbaru.",
+  "43": "Sesi pemesanan telah kedaluwarsa. Silakan lakukan pencarian ulang.",
+  "44": "Booking gagal — sesi pemesanan sudah tidak berlaku. Silakan lakukan pencarian jadwal ulang dan coba lagi.",
+  "49": "Kursi tidak lagi tersedia untuk penerbangan ini. Silakan pilih penerbangan lain.",
+  "65": "Booking gagal — kursi habis atau data tidak sesuai. Silakan lakukan pencarian ulang.",
+  "69": "Sesi pemesanan telah kedaluwarsa. Silakan lakukan pencarian ulang.",
+  "71": "Booking gagal. Silakan lakukan pencarian jadwal sekali lagi.",
+  "87": "Email pemesan belum diisi atau tidak valid. Mohon periksa kembali.",
+  "88": "Booking gagal. Silakan coba lagi atau hubungi customer service kami.",
+  "99": "Layanan penerbangan sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi.",
+};
+
 router.post("/", async (req, res, next) => {
   const requestData = req.body;
   requestData.f = "book";
@@ -69,7 +90,9 @@ router.post("/", async (req, res, next) => {
     }
 
     const rc = isSuccess ? "00" : (result.data?.rc || "99");
-    const msg = isSuccess ? (result.message || "sukses") : (result.data?.msg || result.message || "Failed to book flight");
+    const msg = isSuccess
+      ? (result.message || "sukses")
+      : (BOOK_RC_MESSAGES[rc] || result.data?.msg || result.message || "Booking gagal. Silakan coba lagi.");
 
     // Reconstruct the response with 'rc' and 'msg' as expected by the frontend
     const frontendResponse = {
