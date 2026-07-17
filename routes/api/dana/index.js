@@ -13,7 +13,7 @@ function toDanaAmount(value) {
 
 /**
  * POST /api/dana/create-order
- * Body: { bookingNo, payMethod }  payMethod ∈ QRIS | BCA | BNI | BRI | MANDIRI
+ * Body: { bookingNo, payMethod }  payMethod ∈ BNI | BRI | MANDIRI | CIMB | PANIN
  *
  * Creates a native DANA payment priced entirely from the stored booking (the
  * client never supplies an amount) and returns the VA/QRIS instructions the
@@ -62,7 +62,8 @@ router.post('/create-order', async (req, res, next) => {
 
     const result = await createNativePaymentOrder({ bookingNo, amountValue, orderTitle, methodKey: payMethod });
 
-    if (result.responseCode !== '2005400' || !result.paymentCode) {
+    // Success needs a VA number (bank transfer) or a redirect URL (DANA wallet).
+    if (result.responseCode !== '2005400' || (!result.paymentCode && !result.redirectUrl)) {
       console.error('DANA create-order failed:', result.responseCode, result.responseMessage);
       return res.status(502).json({
         message: 'Failed to create DANA payment',
@@ -73,9 +74,9 @@ router.post('/create-order', async (req, res, next) => {
 
     return res.json({
       method: result.method,
-      kind: result.kind,          // 'QRIS' | 'VA'
-      vaNumber: result.vaNumber,  // for VA
-      qrContent: result.qrContent, // for QRIS
+      kind: result.kind,           // 'VA' | 'REDIRECT'
+      vaNumber: result.vaNumber,   // for VA
+      redirectUrl: result.redirectUrl, // for DANA wallet
       paymentCode: result.paymentCode,
       expiryTime: result.expiryTime,
       referenceNo: result.referenceNo,

@@ -238,18 +238,25 @@ router.post("/", ensureToken, async (req, res, next) => {
     }
 
     if (!livePrice) {
-      livePrice = Number(req.body.price || 350000) * passengers.length;
+      // Never fall back to a client-supplied price — that would allow
+      // underpriced paid bookings. If authoritative Sindo pricing is
+      // unavailable, fail the booking rather than trust req.body.price.
+      return res.status(502).json({
+        message: "Unable to confirm the ferry price right now. Please try again shortly.",
+      });
     }
 
-    // Find or create terminals locally
-    const originTerminal = await FerryBookingDAO.findOrCreateTerminal(
-      originTerminalCode,
-      req.body.originTerminalName || originTerminalCode
-    );
-    const destTerminal = await FerryBookingDAO.findOrCreateTerminal(
-      destinationTerminalCode,
-      req.body.destinationTerminalName || destinationTerminalCode
-    );
+    // Find or create terminals locally (independent upserts, run in parallel)
+    const [originTerminal, destTerminal] = await Promise.all([
+      FerryBookingDAO.findOrCreateTerminal(
+        originTerminalCode,
+        req.body.originTerminalName || originTerminalCode
+      ),
+      FerryBookingDAO.findOrCreateTerminal(
+        destinationTerminalCode,
+        req.body.destinationTerminalName || destinationTerminalCode
+      ),
+    ]);
 
     // Save locally using our GUID as bookingNo
     await FerryBookingDAO.createBooking({

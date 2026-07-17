@@ -64,27 +64,10 @@ connectDB();
 
 // Required for seed
 const seedAdmin = require("./db/seeds/seedAdmin");
-const UserDAO = require("./db/dao/UserDAO");
 const getRedisClient = require("./utils/redisClient"); // Added Redis check
 
 (async () => {
   await seedAdmin();
-
-  // Automated Admin Login
-  try {
-    const admin = await UserDAO.findByUsername(
-      process.env.DEFAULT_USER || "alvianzf",
-    );
-    if (admin) {
-      const token = UserDAO.generateJWT(admin);
-      console.log("--------------------------------------------------");
-      console.log("Admin session initialized successfully");
-      console.log("JWT Token:", token);
-      console.log("--------------------------------------------------");
-    }
-  } catch (err) {
-    console.error("Failed to initialize Admin session:", err.message);
-  }
 
   // Initialize Redis
   try {

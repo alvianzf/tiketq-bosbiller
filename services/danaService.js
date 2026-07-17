@@ -5,13 +5,19 @@ const { DanaSignatureUtil } = require('dana-node/runtime');
 const DANA_API_BASE_URL = process.env.DANA_API_BASE_URL || 'https://api.sandbox.dana.id';
 const CREATE_ORDER_PATH = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
-// Native payment methods → DANA payMethod/payOption enums. QRIS + 4 VA banks.
+// Native payment methods → DANA payMethod/payOption enums.
+// Only payment options verified working against the production merchant are
+// listed here. BCA/BTPN/PERMATA/BSI are rejected by DANA for this merchant, and
+// QRIS requires a registered externalStoreId (see DANA_STORE_ID below).
 const PAY_METHOD_MAP = {
-  QRIS: { payMethod: 'NETWORK_PAY', payOption: 'NETWORK_PAY_PG_QRIS' },
-  BCA: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_BCA' },
+  // DANA balance/e-wallet — returns a webRedirectUrl to the DANA app/checkout.
+  DANA: { payMethod: 'BALANCE', payOption: '' },
+  // Virtual accounts — return a VA number the customer transfers to.
   BNI: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_BNI' },
   BRI: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_BRI' },
   MANDIRI: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_MANDIRI' },
+  CIMB: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_CIMB' },
+  PANIN: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_PANI' },
 };
 
 /**
@@ -84,14 +90,18 @@ function danaTimestamp() {
 function normalizePaymentResponse(body, methodKey, fallbackExpiry) {
   const ai = body.additionalInfo || {};
   const vaInfo = ai.virtualAccountInfo || {};
-  const isQris = methodKey === 'QRIS';
+  const vaNumber = vaInfo.virtualAccountCode || ai.paymentCode || null;
+  const redirectUrl = body.webRedirectUrl || null;
+  // BALANCE (DANA wallet) returns a redirect URL and no VA number.
+  const isRedirect = !vaNumber && !!redirectUrl;
   return {
     method: methodKey,
-    kind: isQris ? 'QRIS' : 'VA',
-    // For QRIS this is the QR payload string; for VA this is the VA number.
-    paymentCode: ai.paymentCode || vaInfo.virtualAccountCode || null,
-    qrContent: isQris ? (ai.paymentCode || ai.qrContent || null) : null,
-    vaNumber: isQris ? null : (vaInfo.virtualAccountCode || ai.paymentCode || null),
+    kind: isRedirect ? 'REDIRECT' : 'VA',
+    // The Virtual Account number the customer transfers to (null for redirect).
+    paymentCode: vaNumber,
+    qrContent: null,
+    vaNumber,
+    redirectUrl,
     expiryTime: vaInfo.virtualAccountExpiryTime || ai.expiryTime || fallbackExpiry,
     referenceNo: body.referenceNo || null,
     partnerReferenceNo: body.partnerReferenceNo || null,
@@ -103,7 +113,7 @@ function normalizePaymentResponse(body, methodKey, fallbackExpiry) {
 
 /**
  * Create a native DANA payment (host-to-host) for a booking and return the
- * normalized VA/QRIS instructions. `methodKey` is one of QRIS|BCA|BNI|BRI|MANDIRI.
+ * normalized VA instructions. `methodKey` is one of the keys in PAY_METHOD_MAP.
  * Uses a raw signed fetch (the SDK double-reads the body on these responses).
  * `amountValue` must be a server-derived IDR string with 2 decimals.
  */
@@ -117,7 +127,10 @@ async function createNativePaymentOrder({ bookingNo, amountValue, orderTitle, me
     partnerReferenceNo: bookingNo,
     merchantId: process.env.DANA_MERCHANT_ID,
     amount: { value: amountValue, currency: 'IDR' },
-    externalStoreId: process.env.DANA_STORE_ID || 'TIKETQ01',
+    // externalStoreId must be a shop registered with DANA (Create Shop API); an
+    // unregistered value is rejected with 4045408 Invalid Merchant. Only send it
+    // when a real store ID is configured (required for QRIS, optional for VA).
+    ...(process.env.DANA_STORE_ID ? { externalStoreId: process.env.DANA_STORE_ID } : {}),
     validUpTo,
     urlParams: [
       { url: `${origin}/dana-transaction-status?bookingno=${encodeURIComponent(bookingNo)}`, type: 'PAY_RETURN', isDeeplink: 'Y' },

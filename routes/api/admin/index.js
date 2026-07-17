@@ -8,7 +8,7 @@ const adminMiddleware = require("../../../middleware/adminMiddleware");
 const serverRouter = require("./server");
 
 // Secure all admin routes
-// router.use(authMiddleware, adminMiddleware);
+router.use(authMiddleware, adminMiddleware);
 
 // --- Server Management ---
 router.use("/server", serverRouter);
@@ -160,35 +160,35 @@ router.get("/logs", async (req, res, next) => {
 // GET /api/admin/stats - Get dashboard statistics
 router.get("/stats", async (req, res, next) => {
   try {
-    const totalTransactions = await prisma.transaction.count();
-    const successfulTransactions = await prisma.transaction.count({
-      where: { payment_status: true }
-    });
-    
-    // Sum total sales
-    const transactions = await prisma.transaction.findMany({
-      where: { payment_status: true },
-      select: { totalSales: true }
-    });
-
-    const totalRevenue = transactions.reduce((acc, curr) => acc + Number(curr.totalSales || 0), 0);
-    
-    const activeCars = await prisma.car.count({
-      where: { available: true }
-    });
-
     // Simple revenue by month for charts (last 6 months)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const monthlyData = await prisma.transaction.groupBy({
-      by: ['createdAt'],
-      where: {
-        payment_status: true,
-        createdAt: { gte: sixMonthsAgo }
-      },
-      _sum: { totalSales: true }
-    });
+    // All of these are independent — run them concurrently
+    const [totalTransactions, successfulTransactions, transactions, activeCars, monthlyData] = await Promise.all([
+      prisma.transaction.count(),
+      prisma.transaction.count({
+        where: { payment_status: true }
+      }),
+      // Sum total sales
+      prisma.transaction.findMany({
+        where: { payment_status: true },
+        select: { totalSales: true }
+      }),
+      prisma.car.count({
+        where: { available: true }
+      }),
+      prisma.transaction.groupBy({
+        by: ['createdAt'],
+        where: {
+          payment_status: true,
+          createdAt: { gte: sixMonthsAgo }
+        },
+        _sum: { totalSales: true }
+      }),
+    ]);
+
+    const totalRevenue = transactions.reduce((acc, curr) => acc + Number(curr.totalSales || 0), 0);
 
     // Grouping by month name helper
     const revenueByMonth = monthlyData.reduce((acc, item) => {
@@ -323,23 +323,21 @@ router.get("/upcoming-schedules", async (req, res, next) => {
     const in7Days = new Date(today);
     in7Days.setDate(today.getDate() + 8); // Include full 7th day
 
-    // 1. Flights
-    const flightsRaw = await prisma.flightBooking.findMany({
-      where: { payment_status: true },
-      include: { passengers: true }
-    });
-
-    // 2. Ferries
-    const ferriesRaw = await prisma.ferryBooking.findMany({
-      where: { payment_status: true },
-      include: { passengers: true, origin: true, destination: true }
-    });
-
-    // 3. Car Rentals
-    const carsRaw = await prisma.carRentalRequest.findMany({
-      where: { status: { in: ["APPROVED", "PENDING_REVIEW"] } }, // Include pending for admin visibility
-      include: { car: true, transaction: true }
-    });
+    // 1. Flights / 2. Ferries / 3. Car Rentals — independent, fetched concurrently
+    const [flightsRaw, ferriesRaw, carsRaw] = await Promise.all([
+      prisma.flightBooking.findMany({
+        where: { payment_status: true },
+        include: { passengers: true }
+      }),
+      prisma.ferryBooking.findMany({
+        where: { payment_status: true },
+        include: { passengers: true, origin: true, destination: true }
+      }),
+      prisma.carRentalRequest.findMany({
+        where: { status: { in: ["APPROVED", "PENDING_REVIEW"] } }, // Include pending for admin visibility
+        include: { car: true, transaction: true }
+      }),
+    ]);
 
     const schedules = [];
 

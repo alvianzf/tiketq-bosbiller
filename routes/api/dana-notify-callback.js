@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { WebhookParser } = require('dana-node/webhook/v1');
 const FerryBookingDAO = require('../../db/dao/FerryBookingDAO');
+const FlightBookingDAO = require('../../db/dao/FlightBookingDAO');
 const { dana } = require('../../services/danaService');
 const { fulfillFerryBooking, fulfillFlightBooking } = require('../../services/bookingFulfillment');
 
@@ -84,10 +85,27 @@ router.post('/', async (req, res) => {
       }
 
       // Ferry vs flight is determined by which booking table owns this bookingNo.
+      const isFerryBooking = await FerryBookingDAO.existsByNo(bookingNo);
+
+      // Verify the paid amount matches the stored booking total before
+      // fulfilling, so an underpaid/tampered settlement can't issue a ticket.
+      // Enforced only when a stored booking exists (DANA's sandbox compliance
+      // notifies use synthetic refs with no local booking).
+      const booking = isFerryBooking
+        ? await FerryBookingDAO.findBookingByNo(bookingNo)
+        : (await FlightBookingDAO.findBookingsByBookNo(bookingNo))?.[0];
+      if (booking) {
+        const paidValue = Number(amount?.value);
+        const expectedTotal = Number(booking.totalSales);
+        if (!Number.isFinite(paidValue) || Math.round(paidValue) !== Math.round(expectedTotal)) {
+          console.error(`DANA notify for ${bookingNo}: paid amount ${amount?.value} does not match booking total ${booking.totalSales}; rejecting.`);
+          return res.status(500).json({ responseCode: '5005601', responseMessage: 'Internal Server Error' });
+        }
+      }
+
       // Fulfillment (mark PAID, issue tickets/vouchers, email) is idempotent, so a
       // duplicate notify delivery is a no-op.
-      const ferryBooking = await FerryBookingDAO.findBookingByNo(bookingNo);
-      if (ferryBooking) {
+      if (isFerryBooking) {
         await fulfillFerryBooking(bookingNo);
       } else {
         await fulfillFlightBooking(bookingNo);
