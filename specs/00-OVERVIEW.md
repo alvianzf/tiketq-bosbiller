@@ -73,7 +73,7 @@ all third-party booking/payment providers.
 |------|------------------------|
 | **Booking** | A stored order for a product. Flight → `FlightBooking` (`bookingCode`), Ferry → `FerryBooking` (`bookingNo`, which is the Sindo booking GUID), Car → `CarRentalRequest`. Each has an owning `Transaction`. |
 | **Transaction** | The unifying financial record (`Transaction` model) linked 1:1 to exactly one booking; carries `serviceType`, `payment_status`, `status`, and money fields. |
-| **E-ticket** | A PDF generated server-side after settlement (`pdfService` for flights, `ferryPdfService` for ferries) and emailed to the customer alongside an invoice PDF. |
+| **E-ticket** | A PDF generated server-side after settlement (`pdfService` for flights, `ferryPdfService` for ferries) and emailed to the customer alongside an invoice PDF. The flight PDF + HTML email are rendered from the stored `FlightBooking` (route, date, booking code, passengers, cabin class) — **airline, flight number, and times are not persisted, so they are intentionally omitted** rather than fabricated; full-schedule parity with the in-app e-ticket needs those columns added to the schema (tracked follow-up). |
 | **VA (Virtual Account)** | A bank virtual-account number the customer transfers to. Produced by DANA for `payMethod` BNI/BRI/MANDIRI/CIMB/PANIN. |
 | **DANA wallet (BALANCE)** | The `payMethod: DANA` option; returns a `webRedirectUrl` to the DANA hosted checkout instead of a VA number. |
 | **DANA SNAP** | Indonesia's SNAP open-API standard. DANA requests are signed with asymmetric RSA-SHA256 over a canonical string-to-sign; the notify webhook is verified against DANA's public key. See [`04-PAYMENTS-DANA.md`](04-PAYMENTS-DANA.md). |
