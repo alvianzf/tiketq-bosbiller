@@ -35,7 +35,7 @@ all third-party booking/payment providers.
 - Post-payment fulfillment (idempotent claim → ticket issuance → e-ticket/invoice email → `booking:update` emit).
 - Guest booking-history lookup by email (no auth).
 - Admin dashboard back-end: transactions, stats, health, logs, user management, and a server-ops console.
-- JWT auth (bcrypt), rate limiting, an AI chat assistant over Socket.io with 8 tool functions.
+- JWT auth (bcrypt), rate limiting, an AI chat assistant over Socket.io with 9 tool functions.
 
 **Out of scope / explicitly absent:**
 

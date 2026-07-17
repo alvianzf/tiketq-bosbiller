@@ -184,13 +184,27 @@ const tools = [
     type: "function",
     function: {
       name: "get_booking_info",
-      description: "Get information about an existing flight or ferry booking.",
+      description: "Get the details of a single existing booking by its booking code / booking number. Use this when the user gives a specific booking code.",
       parameters: {
         type: "object",
         properties: {
           bookingCode: { type: "string" }
         },
         required: ["bookingCode"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_booking_history",
+      description: "Retrieve ALL bookings (flights, ferries, and car rentals) associated with a customer's email address. Use this when the user asks to see their bookings or history and provides an email. If they give a single booking code instead, use get_booking_info.",
+      parameters: {
+        type: "object",
+        properties: {
+          email: { type: "string", description: "The email address used at checkout." }
+        },
+        required: ["email"]
       }
     }
   },
@@ -267,6 +281,7 @@ CRITICAL RULE: When a user wants to proceed to booking, you MUST ask for their d
 CRITICAL RULE: When a user clicks 'Select & Continue' on a flight/ferry card, they will send you a message containing the number of passengers. Use EXACTLY those passenger counts when calling execute_flight_booking or execute_ferry_booking.
 Once you have the passenger details, use 'execute_flight_booking' or 'execute_ferry_booking'.
 When user wants to pay, use 'generate_dana_payment' tool. Always be concise.
+BOOKING LOOKUP: If the user gives a specific booking code/number, use 'get_booking_info' to show that single booking (a detail card renders automatically). If the user wants to see all of their bookings/history and gives an email address, use 'get_booking_history'. For history results there is no card, so briefly summarize the bookings in text (booking code, route, date, and status for each) and offer to open any one by its code.
 If the user asks for customer service, help, or complaints, use the 'show_customer_service' tool and acknowledge it briefly.`
           }
         ]
@@ -601,8 +616,20 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
           type: "booking_summary",
           data: res.data?.data || null
         });
-        
+
         return JSON.stringify(res.data?.data || { error: "Booking not found" });
+      }
+      else if (name === "get_booking_history") {
+        // All bookings (flights/ferries/cars) for an email. The /api/history
+        // endpoint keys on the email supplied at checkout.
+        const res = await axios.get(`${baseUrl}/api/history`, { params: { email: args.email } });
+        const data = res.data || {};
+        const counts = {
+          flights: data.flights?.length || 0,
+          ferries: data.ferries?.length || 0,
+          cars: data.cars?.length || 0,
+        };
+        return JSON.stringify({ email: args.email, counts, ...data });
       }
       else if (name === "show_customer_service") {
         socket.emit("chat:tool_result", {

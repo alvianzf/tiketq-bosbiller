@@ -71,7 +71,7 @@ exercised end-to-end with no provider connectivity/IP-whitelisting. Default is `
   requested tool, emits an intermediate `chat:tool_result` (typed payloads the frontend renders as cards), and
   feeds results back until the model produces a final answer.
 
-### 3.1 The 8 tool definitions
+### 3.1 The 9 tool definitions
 | # | Tool | Purpose |
 |---|------|---------|
 | 1 | `search_flights` | Search flights on a date (assumes 1 adult; `highlight_preference` cheapest/earliest/latest/all) |
@@ -79,15 +79,14 @@ exercised end-to-end with no provider connectivity/IP-whitelisting. Default is `
 | 3 | `search_ferry_trips` | Ferry trips (Batam BTC ⇄ Singapore HFC) |
 | 4 | `execute_flight_booking` | Create a real flight booking (requires collected passenger details + `searchId`) |
 | 5 | `execute_ferry_booking` | Create a real ferry booking (requires passenger details incl. passport issue date) |
-| 6 | `generate_dana_payment` | Create a DANA payment for a booking; **amount taken from stored booking server-side** |
-| 7 | `get_booking_info` | Look up an existing flight/ferry booking |
-| 8 | `show_customer_service` | Render the customer-service contact card |
+| 6 | `generate_dana_payment` | Create a DANA bank-VA payment for a booking; **amount taken from stored booking server-side**; `payMethod ∈ {BNI,BRI,MANDIRI,CIMB,PANIN}`, default BNI |
+| 7 | `get_booking_info` | Look up a **single** booking by its booking code (renders a `booking_summary` card) |
+| 8 | `get_booking_history` | Look up **all** bookings (flights/ferries/cars) for an email via `GET /api/history?email=`; the model summarizes the list in text |
+| 9 | `show_customer_service` | Render the customer-service contact card |
 
-> **Known drift:** `generate_dana_payment`'s schema advertises `payMethod ∈ {QRIS,BCA,BNI,BRI,MANDIRI}` with
-> "QRIS by default", but the DANA create-order route (`/api/dana/create-order`) supports
-> `{DANA,BNI,BRI,MANDIRI,CIMB,PANIN}` and **rejects QRIS/BCA** (see [`04-PAYMENTS-DANA.md`](04-PAYMENTS-DANA.md)).
-> The chatbot tool enum has not been updated to match the route. Selecting QRIS/BCA via chat will fail at the
-> payment route.
+> **Booking lookup:** two entry points — `get_booking_info` for one booking by code, and
+> `get_booking_history` for the full list tied to an email address. The latter returns no card;
+> the model summarizes the bookings and can then open any one by code.
 
 `ChatMessage`-style typed `chat:tool_result` payloads include flight/ferry result lists and the customer
 service card; the frontend renders each type accordingly.
