@@ -1,6 +1,8 @@
 # Webhooks & Socket.io
 
-This document is the single reference for all real-time communication in TiketQ. It covers three interconnected systems: (1) the Midtrans payment webhook at `POST /webhooks/midtrans` — its payload shape, the ferry vs. flight branching logic, and how it emits the `booking:update` event; (2) the Socket.io server configuration including the CORS policy for production vs. development; and (3) the complete AI chat service — the LLM model configuration, the exact system prompt injected into every session, all 8 tool definitions with their full JSON parameter schemas, the agentic tool loop implementation, and a full typed catalog of every socket event (client → server and server → client) including all sub-types of `chat:tool_result`. This document should be read in full before modifying any real-time feature, webhook, or the chatbot.
+This document is the single reference for all real-time communication in TiketQ. It covers three interconnected systems: (1) the DANA Finish Notify payment webhook at `POST /api/dana-notify-callback` — its payload shape, the ferry vs. flight branching logic, the amount-match verification, and how it emits the `booking:update` event; (2) the Socket.io server configuration including the CORS policy for production vs. development; and (3) the complete AI chat service — the LLM model configuration, the exact system prompt injected into every session, all 8 tool definitions with their full JSON parameter schemas, the agentic tool loop implementation, and a full typed catalog of every socket event (client → server and server → client) including all sub-types of `chat:tool_result`. This document should be read in full before modifying any real-time feature, webhook, or the chatbot.
+
+> **Payment is DANA-only.** Midtrans has been removed — there is no `POST /webhooks/midtrans` route and no `midtrans-client` in source. See `docs/DANA_INTEGRATION.md` for the full payment integration.
 
 ---
 
@@ -32,29 +34,36 @@ io.emit('event_name', payload);
 
 ---
 
-## Midtrans Webhook (`routes/webhooks/index.js`)
+## DANA Finish Notify Webhook (`routes/api/dana-notify-callback.js`)
 
-**Endpoint:** `POST /webhooks/midtrans`  
-Called asynchronously by Midtrans after payment is captured/settled.
+**Endpoint:** `POST /api/dana-notify-callback`  
+Called asynchronously by DANA (registered as the merchant's "Finish Payment URL") after a payment attempt completes.
 
-**Midtrans sends:**
+**DANA sends** (`latestTransactionStatus`: `"00"` = success, `"05"` = closed/expired):
 ```json
 {
-  "order_id": "ORDER-ABCDEF-1716800000",
-  "transaction_status": "settlement",
-  "gross_amount": "750000.00"
+  "originalPartnerReferenceNo": "<our bookingNo / bookingCode>",
+  "originalReferenceNo": "20260707...",
+  "merchantId": "216620080012019918983",
+  "amount": { "value": "350000.00", "currency": "IDR" },
+  "latestTransactionStatus": "00",
+  "finishedTime": "2026-07-07T19:00:01+07:00"
 }
 ```
 
 **Logic flow:**
-1. Parses `order_id` to determine service type.
-2. If `order_id.startsWith("ferry-")` → updates `FerryBooking.payment_status = true` via `FerryBookingDAO`.
-3. Otherwise → issues flight ticket to provider, updates `FlightBooking.payment_status = true`.
-4. On either success path, emits `booking:update` via Socket.io.
+1. **Signature verification.** If a DANA public key is configured, `dana-node/webhook/v1`'s `WebhookParser` verifies the SNAP signature (missing/invalid → `401`). If no public key is available (`DANA_WEBHOOK_PUBLIC_KEY` unset), the body is parsed unverified but every status change is gated on a signed `queryPayment` confirmation to DANA (`confirmPaidWithDana`).
+2. On `latestTransactionStatus === "00"`, resolves ferry vs. flight by which booking table owns the `bookingNo` (`FerryBookingDAO.existsByNo`).
+3. **Amount verification.** When a stored booking exists, the paid `amount.value` must match the booking's `totalSales` (rounded), else the notify is rejected with `500` — an underpaid/tampered settlement cannot issue a ticket.
+4. Fulfillment (mark PAID, issue tickets/vouchers, email, then emit `booking:update`) runs via `fulfillFerryBooking` / `fulfillFlightBooking` in `services/bookingFulfillment.js`. Fulfillment is idempotent, so duplicate notify deliveries are no-ops.
+5. `latestTransactionStatus === "05"` is acknowledged only, no DB write.
+6. Sandbox only: `amount.value === "11012.00"` triggers DANA's mandatory "partner simulates internal server error" compliance scenario — responds `5005601`/500.
 
+Acks with `{ responseCode: "2005600", responseMessage: "Successful" }` on success.
+
+The `booking:update` emit lives in `services/bookingFulfillment.js`:
 ```javascript
-const io = require('../../socket').getIo();
-io.emit("booking:update", { bookingNo: bookingCode });
+require('../socket').getIo().emit("booking:update", { bookingNo });
 ```
 
 ---
@@ -228,22 +237,20 @@ On success → emits `chat:tool_result` with `type: "booking_summary"`.
 }
 ```
 
-### 6. `generate_midtrans_payment`
-Builds `order_id` as `ORDER-{bookingCode}-{unix_timestamp}`. Posts to `POST /api/flight/payment/midtrans`.  
-On success → emits `chat:tool_result` with `type: "qris_payment"`, `data: { bookingCode, amount, token }`.
+### 6. `generate_dana_payment`
+Posts to `POST /api/dana/create-order` with `{ bookingNo: bookingCode, payMethod }`. The amount is always derived server-side from the stored booking (the chat never supplies it).  
+On success → emits `chat:tool_result` with `type: "dana_payment"`, `data: { bookingCode, kind, vaNumber, qrContent, expiryTime }`.
 ```json
 {
-  "name": "generate_midtrans_payment",
+  "name": "generate_dana_payment",
   "parameters": {
     "bookingCode": "string",
-    "amount": "number — in IDR",
-    "name": "string",
-    "email": "string",
-    "phone": "string"
+    "payMethod": "enum: QRIS | BCA | BNI | BRI | MANDIRI — defaults to QRIS if omitted"
   },
-  "required": ["bookingCode", "amount"]
+  "required": ["bookingCode"]
 }
 ```
+> **Note:** the tool's `payMethod` enum (`QRIS`/`BCA`/…) predates the current `PAY_METHOD_MAP`, which only accepts `DANA`, `BNI`, `BRI`, `MANDIRI`, `CIMB`, `PANIN` (see `docs/DANA_INTEGRATION.md`). `QRIS`/`BCA` are rejected by `POST /api/dana/create-order` with `400`.
 
 ### 7. `get_booking_info`
 Calls `GET /api/flight/book-info/:bookingCode`.  
@@ -318,7 +325,7 @@ async processMessage(sessionId, messageText, socket) {
 | `chat:tool_result` | See types below | Rich UI card rendered in chat. |
 | `chat:error` | `{ message: string }` | Unhandled LLM API error. |
 | `booking:update` | `{ bookingNo: string }` | Payment webhook succeeded. Triggers `EticketContainer` refetch. |
-| `visitors_update` | `{ count: number }` | Active visitor count changed. |
+| `visitors_update` | `{ activeVisitors: number }` | Active visitor count changed. |
 
 ### `chat:tool_result` Payload Types
 
@@ -327,7 +334,7 @@ type ChatToolResult =
   | { type: 'flight_results';       data: FlightResultsData }
   | { type: 'ferry_results';        data: FerryResultsData }
   | { type: 'booking_summary';      data: BookingSummaryData }
-  | { type: 'qris_payment';         data: QrisPaymentData }
+  | { type: 'dana_payment';         data: DanaPaymentData }
   | { type: 'customer_service_card'; data: {} }
 
 type FlightOption = {
@@ -361,10 +368,12 @@ type BookingSummaryData = {
   error?: string;          // If set, renders a red error card
 }
 
-type QrisPaymentData = {
+type DanaPaymentData = {
   bookingCode: string;
-  amount: number;          // IDR
-  token: string;           // Midtrans Snap token → window.snap.pay(token)
+  kind: string;            // "VA" | "REDIRECT"
+  vaNumber: string | null; // virtual-account number (VA methods)
+  qrContent: string | null;
+  expiryTime: string;
 }
 ```
 

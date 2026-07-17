@@ -240,7 +240,7 @@ Returns available Sindo Ferry schedules. Results are **Redis-cached** using key 
 
 ## Admin Domain (`/api/admin`)
 
-> All `/api/admin/users` sub-routes require `authMiddleware` + `adminMiddleware`.
+> **All `/api/admin/*` routes require `authMiddleware` + `adminMiddleware`** — the domain-wide `router.use(authMiddleware, adminMiddleware)` is active (previously commented out). Every endpoint below needs a valid admin JWT.
 
 ### `GET /api/admin/transactions` — List All Transactions
 Returns all transactions from the `transactions` table, including nested `flightBooking` (with passengers), `ferryBooking` (with passengers, origin, destination), and `carRentalRequest` (with car). Ordered by `createdAt DESC`.
@@ -425,34 +425,60 @@ Requires `authMiddleware` + `adminMiddleware`. Returns all users from the `users
 
 ---
 
-## Webhook (`/webhooks`)
+## Payment (DANA) — `/api/dana`
 
-### `POST /webhooks/midtrans` — Midtrans Payment Notification
-Called asynchronously by Midtrans after a payment is captured/settled. **No authentication required** (secured via Midtrans signature verification).
+> **Payment is DANA-only.** Midtrans has been removed — there is no `POST /webhooks/midtrans` route and no Midtrans integration in source. See `docs/DANA_INTEGRATION.md`.
 
-**Body sent by Midtrans:**
+### `POST /api/dana/create-order` — Create a DANA Payment
+Creates a native DANA payment for a booking. The amount is **always derived server-side** from the stored booking (the client never supplies an amount). Rejects bookings that are already paid.
+
+**Request Body:**
 ```json
 {
-  "order_id": "ORDER-ABCDEF-1716800000",
-  "transaction_status": "settlement",
-  "gross_amount": "750000.00"
+  "bookingNo": "string (required — ferry bookingNo or flight bookingCode)",
+  "payMethod": "string (required) — one of: DANA | BNI | BRI | MANDIRI | CIMB | PANIN"
+}
+```
+`DANA` = the DANA wallet/BALANCE method (hosted redirect). `BNI`/`BRI`/`MANDIRI`/`CIMB`/`PANIN` are bank virtual accounts. (`QRIS` and `BCA` were removed — QRIS needs a registered shop; BCA isn't enabled for this merchant.)
+
+**Response 200 (VA method — bank transfer):**
+```json
+{
+  "method": "BNI",
+  "kind": "VA",
+  "vaNumber": "88810012345678",
+  "redirectUrl": null,
+  "paymentCode": "88810012345678",
+  "expiryTime": "2026-07-07T19:25:00+07:00",
+  "referenceNo": "20260707...",
+  "bookingNo": "QLXUEO"
 }
 ```
 
-**Business Logic:**
-- If `order_id.startsWith("ferry-")`: updates `FerryBooking` to PAID, fetches voucher codes from Sindo API, generates PDF, sends email.
-- Otherwise (flight): Issues ticket to provider, updates `FlightBooking` to PAID, generates PDF, sends email.
-- On any success path, emits `booking:update` Socket.io event: `{ bookingNo: string }`
-
-**Response 200:**
+**Response 200 (DANA wallet — hosted redirect):**
 ```json
-{ "status": "OK" }
+{
+  "method": "DANA",
+  "kind": "REDIRECT",
+  "vaNumber": null,
+  "redirectUrl": "https://m.dana.id/...",
+  "paymentCode": null,
+  "expiryTime": "2026-07-07T19:25:00+07:00",
+  "referenceNo": "20260707...",
+  "bookingNo": "QLXUEO"
+}
 ```
+
+**Response 400:** `{ "message": "payMethod must be one of: DANA, BNI, BRI, MANDIRI, CIMB, PANIN" }` (or `bookingNo is required`)  
+**Response 404:** `{ "message": "Booking not found" }`  
+**Response 409:** `{ "message": "Booking is already paid" }`  
+**Response 422:** `{ "message": "Booking has no valid amount to charge" }`  
+**Response 502:** `{ "message": "Failed to create DANA payment", "code": "...", "detail": "..." }` — DANA rejected the order, or `{ "message": "DANA payment gateway is temporarily unavailable. Please try again." }` on a gateway outage.
 
 ---
 
 ### `POST /api/dana-notify-callback` — DANA Finish Notify Webhook
-Called by DANA after a payment attempt completes (registered as the merchant's "Finish Payment URL" in the DANA dashboard). Verified against DANA's SNAP signature (`dana-node/webhook/v1`'s `WebhookParser`, using DANA's own sandbox public key — not ours) — requests with a missing/invalid `X-SIGNATURE` get `401`. See `docs/DANA_INTEGRATION.md` for the full integration writeup.
+Called by DANA after a payment attempt completes (registered as the merchant's "Finish Payment URL" in the DANA dashboard). When a DANA public key is configured, verified against DANA's SNAP signature (`dana-node/webhook/v1`'s `WebhookParser`) — requests with a missing/invalid `X-SIGNATURE` get `401`. When no public key is configured (`DANA_WEBHOOK_PUBLIC_KEY` unset), the body is treated as an untrusted hint and every status change is gated on a signed `queryPayment` confirmation to DANA. See `docs/DANA_INTEGRATION.md` for the full integration writeup.
 
 **Body sent by DANA** (`latestTransactionStatus`: `"00"` = success, `"05"` = cancelled/expired):
 ```json
@@ -468,7 +494,7 @@ Called by DANA after a payment attempt completes (registered as the merchant's "
 ```
 
 **Business Logic:**
-- `latestTransactionStatus: "00"` → marks the linked FerryBooking/FlightBooking paid (same DAO methods the Midtrans webhook uses) and emits `booking:update`.
+- `latestTransactionStatus: "00"` → verifies the paid `amount.value` matches the stored booking's `totalSales` (when a booking exists), then fulfills the linked FerryBooking/FlightBooking (`fulfillFerryBooking`/`fulfillFlightBooking` in `services/bookingFulfillment.js` — mark PAID, issue ticket/voucher, email) and emits `booking:update`. A mismatched amount is rejected with `500`. Fulfillment is idempotent.
 - `latestTransactionStatus: "05"` → acknowledged only, no DB write (booking was never paid).
 - In sandbox only, `amount.value === "11012.00"` triggers DANA's own mandatory "partner simulates an internal server error" compliance scenario — responds `5005601`/500 instead of processing.
 
