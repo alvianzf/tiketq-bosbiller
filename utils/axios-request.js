@@ -319,8 +319,8 @@ const makeRequest = (data = {}) => {
   return axiosInstance.post(FLIGHT_API_URL, data)
     .then(response => {
       console.log(`[${new Date().toISOString()}] <<< Inbound Flight API Response [${FLIGHT_API_URL}] Status: ${response.status}`);
-      const responseSnippet = JSON.stringify(response.data).substring(0, 500);
-      console.log(`[${new Date().toISOString()}] Result Data Snippet: ${responseSnippet}${JSON.stringify(response.data).length > 500 ? '...' : ''}`);
+      const responseJson = JSON.stringify(response.data);
+      console.log(`[${new Date().toISOString()}] Result Data Snippet: ${responseJson.substring(0, 500)}${responseJson.length > 500 ? '...' : ''}`);
       return response;
     })
     .catch((err) => {
