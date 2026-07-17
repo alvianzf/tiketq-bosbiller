@@ -1,6 +1,6 @@
 # Webhooks & Socket.io
 
-This document is the single reference for all real-time communication in TiketQ. It covers three interconnected systems: (1) the DANA Finish Notify payment webhook at `POST /api/dana-notify-callback` — its payload shape, the ferry vs. flight branching logic, the amount-match verification, and how it emits the `booking:update` event; (2) the Socket.io server configuration including the CORS policy for production vs. development; and (3) the complete AI chat service — the LLM model configuration, the exact system prompt injected into every session, all 8 tool definitions with their full JSON parameter schemas, the agentic tool loop implementation, and a full typed catalog of every socket event (client → server and server → client) including all sub-types of `chat:tool_result`. This document should be read in full before modifying any real-time feature, webhook, or the chatbot.
+This document is the single reference for all real-time communication in TiketQ. It covers three interconnected systems: (1) the DANA Finish Notify payment webhook at `POST /api/dana-notify-callback` — its payload shape, the ferry vs. flight branching logic, the amount-match verification, and how it emits the `booking:update` event; (2) the Socket.io server configuration including the CORS policy for production vs. development; and (3) the complete AI chat service — the LLM model configuration, the exact system prompt injected into every session, all 9 tool definitions with their full JSON parameter schemas, the agentic tool loop implementation, and a full typed catalog of every socket event (client → server and server → client) including all sub-types of `chat:tool_result`. This document should be read in full before modifying any real-time feature, webhook, or the chatbot.
 
 > **Payment is DANA-only.** Midtrans has been removed — there is no `POST /webhooks/midtrans` route and no `midtrans-client` in source. See `docs/DANA_INTEGRATION.md` for the full payment integration.
 
@@ -119,7 +119,7 @@ Sessions are stored in-memory as a `Map<sessionId, messages[]>`. **They are NOT 
 
 ---
 
-## AI Tool Definitions (all 8 tools)
+## AI Tool Definitions (all 9 tools)
 
 ### 1. `search_flights`
 Posts to `POST /api/flight/search`. Returns `chat:tool_result` with `type: "flight_results"`.
@@ -245,15 +245,15 @@ On success → emits `chat:tool_result` with `type: "dana_payment"`, `data: { bo
   "name": "generate_dana_payment",
   "parameters": {
     "bookingCode": "string",
-    "payMethod": "enum: QRIS | BCA | BNI | BRI | MANDIRI — defaults to QRIS if omitted"
+    "payMethod": "enum: BNI | BRI | MANDIRI | CIMB | PANIN — defaults to BNI if omitted"
   },
   "required": ["bookingCode"]
 }
 ```
-> **Note:** the tool's `payMethod` enum (`QRIS`/`BCA`/…) predates the current `PAY_METHOD_MAP`, which only accepts `DANA`, `BNI`, `BRI`, `MANDIRI`, `CIMB`, `PANIN` (see `docs/DANA_INTEGRATION.md`). `QRIS`/`BCA` are rejected by `POST /api/dana/create-order` with `400`.
+> **Note:** the chat payment tool uses bank virtual accounts only — `payMethod ∈ {BNI, BRI, MANDIRI, CIMB, PANIN}`, default `BNI` — because the chat card renders a VA number. The DANA-wallet redirect method and QRIS/BCA are not offered via chat (see `docs/DANA_INTEGRATION.md`).
 
 ### 7. `get_booking_info`
-Calls `GET /api/flight/book-info/:bookingCode`.  
+Look up a **single** booking by its booking code. Calls `GET /api/flight/book-info/:bookingCode`.  
 Emits `chat:tool_result` with `type: "booking_summary"`.
 ```json
 {
@@ -265,7 +265,20 @@ Emits `chat:tool_result` with `type: "booking_summary"`.
 }
 ```
 
-### 8. `show_customer_service`
+### 8. `get_booking_history`
+Look up **all** bookings (flights, ferries, car rentals) for a customer's email. Calls `GET /api/history?email=`.  
+Returns the list to the model (no card); the model summarizes the bookings in text and can then open any one by code via `get_booking_info`.
+```json
+{
+  "name": "get_booking_history",
+  "parameters": {
+    "email": "string"
+  },
+  "required": ["email"]
+}
+```
+
+### 9. `show_customer_service`
 No parameters. Emits `chat:tool_result` with `type: "customer_service_card"`, `data: {}`.  
 Renders a static WhatsApp card linking to `wa.me/6282382709777`.
 

@@ -143,7 +143,7 @@ Key properties:
 
 ## 6. Tool catalog
 
-Eight tools are declared (`tools` array). Each is a typed function; the model
+Nine tools are declared (`tools` array). Each is a typed function; the model
 fills the parameters, `handleToolCall()` executes it against an internal REST
 endpoint over `http://127.0.0.1:${PORT}`, and emits a typed card.
 
@@ -155,8 +155,14 @@ endpoint over `http://127.0.0.1:${PORT}`, and emits a typed card.
 | 4 | `execute_flight_booking` | Create a real flight booking | flight booking endpoint | (booking result) |
 | 5 | `execute_ferry_booking` | Create a real ferry booking (needs passport data) | ferry booking endpoint | (booking result) |
 | 6 | `generate_dana_payment` | Create a DANA **bank VA** payment for a booking | `POST /api/dana/create-order` | `dana_payment` |
-| 7 | `get_booking_info` | Look up an existing booking | `GET /api/flight/book-info/:code` | `booking_summary` |
-| 8 | `show_customer_service` | Show the support contact card | (none) | `customer_service_card` |
+| 7 | `get_booking_info` | Look up a **single** booking by its booking code | `GET /api/flight/book-info/:code` | `booking_summary` |
+| 8 | `get_booking_history` | Look up **all** bookings (flights/ferries/cars) for an email | `GET /api/history?email=` | (none — model summarizes in text) |
+| 9 | `show_customer_service` | Show the support contact card | (none) | `customer_service_card` |
+
+Booking lookup comes in two flavours: `get_booking_info` for a single booking by
+code (renders a detail card), and `get_booking_history` for the full list tied to
+an email (no card — the model summarizes the bookings in text and can then open
+any one by code).
 
 Notes:
 
