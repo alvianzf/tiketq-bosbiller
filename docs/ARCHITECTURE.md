@@ -22,6 +22,7 @@ model User {
   isAdmin   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@map("users")
 }
 
@@ -37,12 +38,13 @@ model Transaction {
   status             String?           @default("PENDING") // "PENDING" | "PAID" | "CANCELLED" | "REFUNDED"
   flightBookingId    Int?              @unique
   ferryBookingId     Int?              @unique
-  carRentalRequestId Int?              @unique
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  carRentalRequestId Int?              @unique
   carRentalRequest   CarRentalRequest? @relation(fields: [carRentalRequestId], references: [id], onDelete: Cascade)
   ferryBooking       FerryBooking?     @relation(fields: [ferryBookingId], references: [id], onDelete: Cascade)
   flightBooking      FlightBooking?    @relation(fields: [flightBookingId], references: [id], onDelete: Cascade)
+
   @@map("transactions")
 }
 
@@ -50,6 +52,9 @@ model FlightBooking {
   id             Int          @id @default(autoincrement())
   bookingCode    String?      @unique
   nominal        String?
+  basePrice      Decimal?     @default(0)
+  serviceFee     Decimal?     @default(0)
+  totalSales     Decimal?     @default(0)
   departureDate  String?
   origin         String?
   destination    String?
@@ -59,14 +64,21 @@ model FlightBooking {
   book_date      DateTime     @default(now())
   payment_status Boolean      @default(false)
   ticketIssued   Boolean      @default(false) // set true in the same DAO call that flips payment_status true
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   passengers     Passenger[]
   transaction    Transaction?
+
   @@map("flight_bookings")
 }
 
 model FerryBooking {
   id             Int          @id @default(autoincrement())
   bookingNo      String?      @unique
+  nominal        String?
+  basePrice      Decimal?     @default(0)
+  serviceFee     Decimal?     @default(0)
+  totalSales     Decimal?     @default(0)
   departureDate  DateTime?
   returnDate     DateTime?
   originId       Int?
@@ -76,10 +88,14 @@ model FerryBooking {
   status         String?      @default("PENDING")
   payment_status Boolean      @default(false)
   ticketIssued   Boolean      @default(false) // set true in the same DAO call that flips payment_status true
+  book_date      DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   destination    Terminal?    @relation("DestinationTerminal", fields: [destinationId], references: [id])
   origin         Terminal?    @relation("OriginTerminal", fields: [originId], references: [id])
   passengers     Passenger[]
   transaction    Transaction?
+
   @@map("ferry_bookings")
 }
 
@@ -94,8 +110,15 @@ model Passenger {
   flightBookingId Int?
   ferryBookingId  Int?
   voucherCodeId   String?
+  cabinClass      String?        @default("economy")
+  isLapInfant     Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   ferryBooking    FerryBooking?  @relation(fields: [ferryBookingId], references: [id], onDelete: Cascade)
   flightBooking   FlightBooking? @relation(fields: [flightBookingId], references: [id], onDelete: Cascade)
+
+  @@index([flightBookingId])
+  @@index([ferryBookingId])
   @@map("passengers")
 }
 
@@ -105,8 +128,11 @@ model Terminal {
   name                     String
   city                     String?
   country                  String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
   destinationFerryBookings FerryBooking[] @relation("DestinationTerminal")
   originFerryBookings      FerryBooking[] @relation("OriginTerminal")
+
   @@map("terminals")
 }
 
@@ -120,9 +146,12 @@ model Car {
   description     String?
   features        String[]
   available       Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
   pricingDuration String?            @default("hari")
   photos          CarPhoto[]
   rentals         CarRentalRequest[]
+
   @@map("cars")
 }
 
@@ -132,7 +161,10 @@ model CarPhoto {
   url       String
   isPrimary Boolean  @default(false)
   carId     Int
+  createdAt DateTime @default(now())
   car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
   @@map("car_photos")
 }
 
@@ -146,9 +178,18 @@ model CarRentalRequest {
   ktpImage    String
   ktpSelfie   String
   status      String       @default("PENDING_REVIEW")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   rentalDays  Int?         @default(1)
   car         Car          @relation(fields: [carId], references: [id], onDelete: Cascade)
   transaction Transaction?
+
   @@map("car_rental_requests")
+}
+
+enum ServiceType {
+  FLIGHT
+  FERRY
+  CAR_RENTAL
 }
 ```

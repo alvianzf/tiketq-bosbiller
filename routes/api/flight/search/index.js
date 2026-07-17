@@ -38,7 +38,9 @@ router.post("/", async (req, res, next) => {
     if (client) {
       const cachedResponse = await client.get(cacheKey);
       if (cachedResponse) {
-        return res.json(JSON.parse(cachedResponse));
+        // Already a JSON string — send as-is to skip a parse + re-stringify
+        // of a large payload on every cache hit.
+        return res.type("application/json").send(cachedResponse);
       }
     }
 

@@ -14,14 +14,27 @@ const router = express.Router();
  * @param {NextFunction} next - The next middleware function in the application's request-response cycle.
  */
 router.post("/", async (req, res, next) => {
-  const { bookingCode, nominal } = req.body;
-  const requestData = {
-    f: "payment",
-    bookingCode,
-    nominal,
-  };
+  const { bookingCode } = req.body;
 
   try {
+    // Derive the amount server-side from the stored booking — never trust a
+    // client-supplied nominal, which would let a caller pay an arbitrary amount.
+    const existingBookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
+    const existing = existingBookings && existingBookings[0];
+    if (!existing) {
+      return res.status(404).json({ status: 404, message: "Booking not found", bookingCode });
+    }
+    const nominal = Number(existing.totalSales);
+    if (!Number.isFinite(nominal) || nominal <= 0) {
+      return res.status(422).json({ status: 422, message: "Booking has no valid amount to charge", bookingCode });
+    }
+
+    const requestData = {
+      f: "payment",
+      bookingCode,
+      nominal,
+    };
+
     const responseData = await apiService.fetchData(requestData);
     
     // Check if the ticketing / payment request succeeded on the provider side
@@ -43,21 +56,26 @@ router.post("/", async (req, res, next) => {
         bookingCode,
       );
     if (paid) {
-      // Generate and send E-Ticket Email asynchronously
-      try {
-        const { generateTicketPDF } = require('../../../../services/pdfService');
-        const { generateInvoicePDF } = require('../../../../services/invoiceService');
-        const { sendBookingEmail } = require('../../../../services/emailService');
-        
-        const fullBookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
-        if (fullBookings && fullBookings.length > 0) {
-          const pdfBuffer = await generateTicketPDF(fullBookings[0]);
-          const invoiceBuffer = await generateInvoicePDF(fullBookings[0]);
-          await sendBookingEmail(fullBookings[0], pdfBuffer, invoiceBuffer);
+      // Generate and send E-Ticket Email after the response is sent — the
+      // email is non-critical for the payment result and all errors are logged.
+      (async () => {
+        try {
+          const { generateTicketPDF } = require('../../../../services/pdfService');
+          const { generateInvoicePDF } = require('../../../../services/invoiceService');
+          const { sendBookingEmail } = require('../../../../services/emailService');
+
+          const fullBookings = await FlightBookingDAO.findBookingsByBookNo(bookingCode);
+          if (fullBookings && fullBookings.length > 0) {
+            const [pdfBuffer, invoiceBuffer] = await Promise.all([
+              generateTicketPDF(fullBookings[0]),
+              generateInvoicePDF(fullBookings[0]),
+            ]);
+            await sendBookingEmail(fullBookings[0], pdfBuffer, invoiceBuffer);
+          }
+        } catch (emailErr) {
+          console.error("Failed to generate/send e-ticket from manual payment route:", emailErr);
         }
-      } catch (emailErr) {
-        console.error("Failed to generate/send e-ticket from manual payment route:", emailErr);
-      }
+      })();
 
       return res.status(200).json({
         status: 200,

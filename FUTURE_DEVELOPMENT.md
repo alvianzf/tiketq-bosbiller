@@ -9,9 +9,9 @@ This document establishes the comprehensive future development and engineering r
 ### API & Architecture
 
 - [ ] **API versioning** — Prefix all routes with `/v1/` (e.g., `/api/v1/flight/search`) to allow non-breaking future iterations.
-- [ ] **Rate limiting** — Add `express-rate-limit` middleware, especially on `/api/auth/`, `/webhooks/midtrans`, and the AI chat endpoint to prevent abuse.
-- [ ] **Request schema validation** — Add `zod` or `express-validator` schemas to all ferry and flight route handlers (currently only auth routes are validated).
-- [ ] **Centralized error handler** — Replace scattered `next(error)` calls with a single Express error-handling middleware that returns consistent `{ error, code, details }` shapes.
+- [ ] **Stricter/per-route rate limiting** — A global limiter (`middleware/rate-limiter`, 120 req/60s) is already applied to all `/api` routes in `routes/index.js`. Add tighter per-route limits on `/api/auth/` and the AI chat socket to further curb abuse.
+- [ ] **Request schema validation** — Add `zod` or `express-validator` schemas to all ferry and flight route handlers (currently only auth routes use `express-validator`).
+- [x] **Centralized error handler** — Done: `middleware/error-handler.js` is the single Express error handler; it returns a consistent `{ message, errors, error? }` shape and no longer leaks stack traces in production (gated on an explicit `NODE_ENV === "development"`).
 - [ ] **API key authentication for third-party access** — Allow trusted external partners to access select endpoints with an API key instead of JWT.
 - [ ] **Pagination on list endpoints** — `/api/admin/transactions` currently returns all records. Add `page` and `limit` query params.
 
@@ -24,8 +24,8 @@ This document establishes the comprehensive future development and engineering r
 
 ### Payments & Transaction Flows
 
-- [ ] **Midtrans refund API integration** — Currently there is no refund endpoint. Implement `POST /api/payment/refund` using the Midtrans Refund API.
-- [ ] **Manual payment confirmation** — Admin endpoint to manually mark a booking as paid (for bank transfer orders that don't go through Midtrans).
+- [ ] **Wire DANA cancel/refund into a route** — `dana.paymentGatewayApi.cancelOrder`/`refundOrder` exist in the SDK but no route calls them; `PATCH /api/admin/transactions/:id/cancel`/`refund` are internal DB status changes only. Persist DANA's `referenceNo` per booking and call the real cancel/refund API. (See `docs/DANA_INTEGRATION.md`.)
+- [ ] **Manual payment confirmation** — Admin endpoint to manually mark a booking as paid (for bank transfer orders that don't complete through DANA).
 - [ ] **Invoice PDF generation** — Auto-generate and email an invoice PDF (distinct from the e-ticket) immediately after payment.
 
 ### Data Model & Storage
@@ -46,7 +46,7 @@ This document establishes the comprehensive future development and engineering r
 ### Testing & Verification
 
 - [ ] **Unit tests for services** — Add Jest test suites for `chatService.js`, `pdfService.js`, `ferryPdfService.js`, and `emailService.js`.
-- [ ] **Integration tests for routes** — Use `supertest` to test key endpoints (`POST /api/ferry/booking`, `POST /webhooks/midtrans`) with mock external APIs.
+- [ ] **Integration tests for routes** — Use `supertest` to test key endpoints (`POST /api/ferry/booking`, `POST /api/dana/create-order`, `POST /api/dana-notify-callback`) with mock external APIs.
 - [ ] **CI/CD pipeline** — Add GitHub Actions workflow: lint → test → build → deploy.
 
 ---

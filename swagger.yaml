@@ -26,25 +26,39 @@ paths:
       tags: [Flight]
   /api/flight/payment:
     post:
-      summary: Process flight payment
-      tags: [Flight]
-  /api/flight/payment/midtrans:
-    post:
-      summary: Create Midtrans token for flight
+      summary: Process flight payment (amount derived server-side from the stored booking)
       tags: [Flight]
 
+  # Payment Domain (DANA — the only payment gateway)
+  /api/dana/create-order:
+    post:
+      summary: Create a DANA payment (payMethod one of DANA, BNI, BRI, MANDIRI, CIMB, PANIN)
+      tags: [Payment]
+  /api/dana-notify-callback:
+    post:
+      summary: DANA Finish Notify webhook (SNAP-signature verified)
+      tags: [Payment]
+
   # Auth Domain
-  /api/auth/login:
+  /api/auth/:
     post:
       summary: Login user
+      tags: [Auth]
+  /api/auth/admin-login:
+    post:
+      summary: Admin login
       tags: [Auth]
   /api/auth/register:
     post:
       summary: Register user
       tags: [Auth]
+  /api/auth/me:
+    get:
+      summary: Get current user profile (requires JWT)
+      tags: [Auth]
   /api/auth/users:
     get:
-      summary: List users
+      summary: List users (requires admin)
       tags: [Auth]
 
   # Ferry Domain

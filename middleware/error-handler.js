@@ -28,11 +28,16 @@ function notFoundHandler(req, res, next) {
  */
 function errorHandler(err, req, res, next) {
   console.error(err.stack);
-  res.status(err.status || 500);
+  const status = err.status || 500;
+  // Gate on an explicit NODE_ENV — Express's app.get("env") defaults to
+  // "development" when NODE_ENV is unset, which would leak stack traces in prod.
+  const isDev = process.env.NODE_ENV === "development";
+  res.status(status);
   res.json({
-    message: err.message,
+    // Never surface internal error detail for server errors in production.
+    message: status >= 500 && !isDev ? "Internal server error" : err.message,
     errors: err.errors || [],
-    error: req.app.get("env") === "development" ? err : {},
+    ...(isDev ? { error: err.stack } : {}),
   });
 }
 

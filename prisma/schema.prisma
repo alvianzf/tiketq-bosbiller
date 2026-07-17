@@ -109,6 +109,8 @@ model Passenger {
   ferryBooking    FerryBooking?  @relation(fields: [ferryBookingId], references: [id], onDelete: Cascade)
   flightBooking   FlightBooking? @relation(fields: [flightBookingId], references: [id], onDelete: Cascade)
 
+  @@index([flightBookingId])
+  @@index([ferryBookingId])
   @@map("passengers")
 }
 
@@ -154,6 +156,7 @@ model CarPhoto {
   createdAt DateTime @default(now())
   car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
 
+  @@index([carId])
   @@map("car_photos")
 }
 

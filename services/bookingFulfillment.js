@@ -32,41 +32,49 @@ async function fulfillFerryBooking(bookingNo) {
   console.log(`Successfully settled ferry booking ${bookingNo}`);
   emitBookingUpdate(bookingNo);
 
-  // Fetch real voucher codes from Sindo Ferry API
-  try {
-    const { makeRequest } = require("../routes/api/ferry/utils");
-    const orderRes = await makeRequest("get", `/agent/Order/Orders/${bookingNo}/WithVoucherIssuance`);
-    const orderData = orderRes.data?.data || orderRes.data || {};
-    const vouchersList = orderData.vouchers || [];
+  // Voucher retrieval + e-ticket email are non-critical for the webhook ack:
+  // run them after returning so the gateway gets its response immediately.
+  // The payment claim above already guarantees idempotency, and every failure
+  // below is caught and logged exactly as before.
+  (async () => {
+    // Fetch real voucher codes from Sindo Ferry API
+    try {
+      const { makeRequest } = require("../routes/api/ferry/utils");
+      const orderRes = await makeRequest("get", `/agent/Order/Orders/${bookingNo}/WithVoucherIssuance`);
+      const orderData = orderRes.data?.data || orderRes.data || {};
+      const vouchersList = orderData.vouchers || [];
 
-    if (vouchersList.length > 0 && updatedBooking.passengers && updatedBooking.passengers.length > 0) {
-      for (let i = 0; i < updatedBooking.passengers.length; i++) {
-        const passenger = updatedBooking.passengers[i];
-        const pVoucher = vouchersList[i];
-        if (pVoucher && pVoucher.voucherCodes && pVoucher.voucherCodes.length > 0) {
-          const voucherCodeId = pVoucher.voucherCodes[0].id;
-          await FerryBookingDAO.updatePassengerVoucher(passenger.id, voucherCodeId);
-          passenger.voucherCodeId = voucherCodeId;
-        }
+      if (vouchersList.length > 0 && updatedBooking.passengers && updatedBooking.passengers.length > 0) {
+        await Promise.all(updatedBooking.passengers.map((passenger, i) => {
+          const pVoucher = vouchersList[i];
+          if (pVoucher && pVoucher.voucherCodes && pVoucher.voucherCodes.length > 0) {
+            const voucherCodeId = pVoucher.voucherCodes[0].id;
+            passenger.voucherCodeId = voucherCodeId;
+            return FerryBookingDAO.updatePassengerVoucher(passenger.id, voucherCodeId);
+          }
+          return null;
+        }));
+        console.log(`Successfully retrieved and stored Sindo Ferry voucher IDs for booking ${bookingNo}`);
       }
-      console.log(`Successfully retrieved and stored Sindo Ferry voucher IDs for booking ${bookingNo}`);
+    } catch (voucherErr) {
+      console.error(`Failed to fetch Sindo Ferry voucher IDs for booking ${bookingNo}:`, voucherErr.message);
     }
-  } catch (voucherErr) {
-    console.error(`Failed to fetch Sindo Ferry voucher IDs for booking ${bookingNo}:`, voucherErr.message);
-  }
 
-  // Send Ferry E-Ticket and Invoice Email
-  try {
-    const { generateFerryTicketPDF } = require('./ferryPdfService');
-    const { generateInvoicePDF } = require('./invoiceService');
-    const { sendFerryBookingEmail } = require('./emailService');
+    // Send Ferry E-Ticket and Invoice Email
+    try {
+      const { generateFerryTicketPDF } = require('./ferryPdfService');
+      const { generateInvoicePDF } = require('./invoiceService');
+      const { sendFerryBookingEmail } = require('./emailService');
 
-    const pdfBuffer = await generateFerryTicketPDF(updatedBooking);
-    const invoiceBuffer = await generateInvoicePDF(updatedBooking);
-    await sendFerryBookingEmail(updatedBooking, pdfBuffer, invoiceBuffer);
-  } catch (emailErr) {
-    console.error("Failed to generate/send ferry e-ticket:", emailErr);
-  }
+      const [pdfBuffer, invoiceBuffer] = await Promise.all([
+        generateFerryTicketPDF(updatedBooking),
+        generateInvoicePDF(updatedBooking),
+      ]);
+      await sendFerryBookingEmail(updatedBooking, pdfBuffer, invoiceBuffer);
+    } catch (emailErr) {
+      console.error("Failed to generate/send ferry e-ticket:", emailErr);
+    }
+  })();
 
   return { settled: true };
 }
@@ -112,18 +120,24 @@ async function fulfillFlightBooking(bookingCode) {
   console.log(`Successfully settled booking ${bookingCode}`);
   emitBookingUpdate(bookingCode);
 
-  try {
-    const { generateTicketPDF } = require('./pdfService');
-    const { generateInvoicePDF } = require('./invoiceService');
-    const { sendBookingEmail } = require('./emailService');
+  // E-ticket email is non-critical for the webhook ack: run it after
+  // returning. Idempotency comes from the claim; all errors stay logged.
+  (async () => {
+    try {
+      const { generateTicketPDF } = require('./pdfService');
+      const { generateInvoicePDF } = require('./invoiceService');
+      const { sendBookingEmail } = require('./emailService');
 
-    const fullBooking = await FlightBookingDAO.findBookingById(booking.id);
-    const pdfBuffer = await generateTicketPDF(fullBooking);
-    const invoiceBuffer = await generateInvoicePDF(fullBooking);
-    await sendBookingEmail(fullBooking, pdfBuffer, invoiceBuffer);
-  } catch (emailErr) {
-    console.error("Failed to generate/send e-ticket:", emailErr);
-  }
+      const fullBooking = await FlightBookingDAO.findBookingById(booking.id);
+      const [pdfBuffer, invoiceBuffer] = await Promise.all([
+        generateTicketPDF(fullBooking),
+        generateInvoicePDF(fullBooking),
+      ]);
+      await sendBookingEmail(fullBooking, pdfBuffer, invoiceBuffer);
+    } catch (emailErr) {
+      console.error("Failed to generate/send e-ticket:", emailErr);
+    }
+  })();
 
   return { settled: true };
 }

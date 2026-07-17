@@ -91,6 +91,16 @@ class FerryBookingDAO {
     });
   }
 
+  /** Lightweight existence check (no relation joins) — used to route a
+   * webhook's bookingNo to ferry vs flight fulfillment. */
+  async existsByNo(bookingNo) {
+    const row = await prisma.ferryBooking.findUnique({
+      where: { bookingNo },
+      select: { id: true },
+    });
+    return !!row;
+  }
+
   /**
    * Atomically claim an unpaid ferry booking for settlement. The updateMany
    * guard (payment_status:false) means only the first concurrent caller flips

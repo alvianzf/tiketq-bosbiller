@@ -1,6 +1,6 @@
 # Dana Payment Integration
 
-TiketQ is migrating its payment gateway from Midtrans to **Dana**, using Dana's SNAP API (Gapura Payment Gateway — Hosted Checkout). This document is the reference for the Dana side of that integration; see `WEBHOOKS_AND_SOCKETS.md` for the Midtrans logic being replaced.
+**DANA is TiketQ's only payment gateway** — Midtrans has been fully removed (no `midtrans-client` in source, no `POST /webhooks/midtrans` route). Payments use DANA's SNAP Payment Gateway API. This document is the reference for the DANA integration; see `WEBHOOKS_AND_SOCKETS.md` for the Finish Notify webhook and Socket.io emit.
 
 > **Status:** Sandbox integration built and verified against the real DANA sandbox. Mandatory compliance checklist: Payment Gateway Payment (5/5 scenarios verified), Finish Notify (3/3 verified), Refund Order (6/9 confirmed matching response codes — the "success" and "inconsistent request" cases need a longer settle delay after sandbox VA payment before retrying, not a code fix), Cancel Order (blocked — DANA's sandbox Cancel Order endpoint was returning `5005701 Internal Server Error` on every attempt regardless of trigger during testing, unrelated to request shape; retry once DANA's sandbox is stable).
 
@@ -34,24 +34,37 @@ DANA_PRIVATE_KEY=...      # our RSA private key — signs every outbound request
 
 ---
 
-## Product: Gapura Payment Gateway — Hosted Checkout
+## Product: Payment Gateway (`payment-host-to-host.htm`)
 
-Confirmed against DANA's own docs: `additionalInfo.order.scenario: "REDIRECT"` returns a `webRedirectUrl` in the create-order response, which the customer is redirected to for payment (Hosted Checkout). This is what the mandatory compliance checklist tests (`payment-host-to-host.htm` + "Displaying webRedirectUrl to the users" as the partner action) — **not** the Custom Checkout / QR-deeplink flow an earlier draft of this doc assumed.
+The live create-order route (`POST /api/dana/create-order`, `routes/api/dana/index.js`) creates a **native** DANA payment via `createNativePaymentOrder` in `services/danaService.js` — a signed host-to-host call carrying `payOptionDetails` (`payMethod`/`payOption`). Two response shapes come back depending on the method:
+
+- **DANA wallet** (`payMethod: DANA` → DANA `BALANCE`): returns `kind: "REDIRECT"` with a `redirectUrl` (`m.dana.id`) the customer is sent to.
+- **Bank virtual accounts** (`BNI`/`BRI`/`MANDIRI`/`CIMB`/`PANIN`): return `kind: "VA"` with a `vaNumber` the customer transfers to.
+
+Supported methods are defined in `PAY_METHOD_MAP`. `QRIS` and `BCA` were **removed** — QRIS requires a registered `externalStoreId` (Create Shop API), and BCA is not enabled for this merchant. `BTPN`/`PERMATA`/`BSI` are also rejected by DANA for this merchant.
+
+> `services/danaService.js` also exports `createRedirectOrder` (a pure hosted-checkout `scenario: "REDIRECT"` helper); it is not used by the current `/create-order` route, which uses the native `createNativePaymentOrder` path for both the wallet and VA methods.
+
+### Amount is always server-derived
+`POST /api/dana/create-order` takes only `{ bookingNo, payMethod }`. It resolves the booking from whichever table owns the number (ferry then flight), reads `totalSales`, and charges that. **The client never supplies an amount.** Already-paid bookings are rejected with `409`.
+
+### `externalStoreId` gotcha (DANA `4045408 Invalid Merchant`)
+`externalStoreId` is only sent when `process.env.DANA_STORE_ID` is set. It must be a shop registered with DANA (Create Shop API); an unregistered value is rejected with `4045408 Invalid Merchant`. It is required only for QRIS/registered shops and optional for VA — so leave `DANA_STORE_ID` unset unless you have a real registered store ID.
 
 ### Signing: asymmetric only (no B2B access token step)
-Every outbound call (`payment-host-to-host.htm`, cancel, refund) is signed the same way — no separate OAuth/access-token exchange needed for this product:
+Every outbound call is signed the same way — no separate OAuth/access-token exchange needed for this product:
 
 ```
 stringToSign = `${httpMethod}:${endpointUrl}:${sha256Hex(requestBody)}:${xTimestamp}`
 X-SIGNATURE  = base64(RSA-SHA256-sign(stringToSign, DANA_PRIVATE_KEY))
 ```
 
-`services/danaService.js` wraps the official `dana-node` SDK (`dana.paymentGatewayApi.createOrder/cancelOrder/refundOrder`), which handles this signing internally — call it directly rather than re-implementing signature logic.
+`createNativePaymentOrder` signs the create-order call directly via `DanaSignatureUtil.generateSnapB2BScenarioSignature` (a raw signed `fetch`, because the SDK double-reads the body on these responses). Other calls (`queryPayment`, `cancelOrder`, `refundOrder`) go through the official `dana-node` SDK (`dana.paymentGatewayApi.*`), which signs internally.
 
 ### Payment flow
-1. Backend calls `dana.paymentGatewayApi.createOrder(...)` with `partnerReferenceNo`, `amount`, `urlParams` (`PAY_RETURN` + `NOTIFICATION`), and `additionalInfo.order.scenario: "REDIRECT"`.
-2. Response includes `webRedirectUrl` — redirect the customer there.
-3. DANA calls our Finish Notify webhook (`POST /api/dana-notify-callback`, see `docs/API_REFERENCE.md`) on settlement/expiry — verified via `WebhookParser`, updates the booking, emits `booking:update` via Socket.io (same pattern as the Midtrans webhook).
+1. Frontend calls `POST /api/dana/create-order` with `{ bookingNo, payMethod }`.
+2. Response is either `kind: "REDIRECT"` (send the customer to `redirectUrl`) or `kind: "VA"` (display `vaNumber` + `expiryTime`).
+3. DANA calls our Finish Notify webhook (`POST /api/dana-notify-callback`, see `docs/API_REFERENCE.md`) on settlement/expiry — verified via `WebhookParser` (or gated on a signed `queryPayment` confirmation when no DANA public key is configured), verifies the paid amount matches the stored booking total, fulfills the booking, and emits `booking:update` via Socket.io.
 4. Cancel/refund: `dana.paymentGatewayApi.cancelOrder`/`refundOrder`, referencing the original `partnerReferenceNo`. **Not currently wired into any route** — the admin cancel/refund feature (`PATCH /api/admin/transactions/:id/cancel`/`refund`) is an internal DB status change only for now, since DANA's `originalReferenceNo` isn't persisted per booking yet and the sandbox Cancel Order endpoint was unstable during testing. Wiring in the real DANA call is a fast-follow.
 
 ---
@@ -70,8 +83,7 @@ All three log full request/response bodies so you can compare returned `response
 
 ## Migration notes
 
-Full replacement of Midtrans (per project decision — no dual-gateway support). Files touched when the migration completes:
+Full replacement of Midtrans (per project decision — no dual-gateway support). The backend migration is complete:
 
-- Backend: `services/createMidtransToken.js`, `routes/api/flight/payment/midtrans/`, `routes/webhooks/index.js` (`/hooks/midtrans` → `/api/dana-notify-callback`, already live), `services/chatService.js` (`generate_midtrans_payment` tool)
-- Frontend (`tiket-FE`): `src/components/Payment/PaymentForm.tsx`, `src/containers/FerryPaymentContainer/index.tsx`, `src/components/ChatBot/ChatMessage.tsx` — all currently load `snap.js`; to be replaced with a redirect to DANA's `webRedirectUrl`.
-- Prisma: no `paymentGateway` column exists yet (gateway is inferred from `order_id`/`bookingCode` prefix) — will need one once both gateways run side by side during cutover, or the DANA `referenceNo` will need persisting per booking regardless (needed for real cancel/refund).
+- Backend: the Midtrans token service, `routes/api/flight/payment/midtrans/`, and the Midtrans webhook are all gone. The DANA webhook (`POST /api/dana-notify-callback`) is live, and `services/chatService.js` now exposes a `generate_dana_payment` tool (posting to `/api/dana/create-order`) in place of the old `generate_midtrans_payment`.
+- Prisma: no `paymentGateway` column exists (all payments are DANA). The DANA `referenceNo` is still **not** persisted per booking — this is the remaining gap for wiring real cancel/refund (`dana.paymentGatewayApi.cancelOrder`/`refundOrder` reference the original `partnerReferenceNo`, which is the `bookingNo`).
