@@ -3,196 +3,224 @@ const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
 
+// Brand palette
+const BRAND = '#FF5A00';       // TiketQ orange (primary)
+const BRAND_SOFT = '#FFF3EC';  // soft orange tint for cards
+const BRAND_BORDER = '#FFD9C2';
+const DARK = '#1A1A1A';
+const TEXT = '#555555';
+const MUTED = '#8A8A8A';
+const LINE = '#E6E6E6';
+const TABLE_HEAD = '#F7F7F7';
+
+const APP_URL = (code) => `https://tiketq.com/eticket?bookingno=${encodeURIComponent(code || '')}`;
+
+function formatDepartureDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+}
+
+function fullName(p) {
+  return [p.title, p.firstName || p.first_name, p.lastName || p.last_name]
+    .filter(Boolean)
+    .join(' ')
+    .toUpperCase()
+    .trim();
+}
+
+function capitalize(str) {
+  if (!str) return '';
+  return String(str).charAt(0).toUpperCase() + String(str).slice(1);
+}
+
 async function generateTicketPDF(bookingData) {
   return new Promise(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
       const buffers = [];
-
       doc.on('data', buffers.push.bind(buffers));
-      doc.on('end', () => {
-        const pdfData = Buffer.concat(buffers);
-        resolve(pdfData);
-      });
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
 
-      const primaryColor = '#2563eb'; // TiketQ Blue
-      const darkColor = '#333333';
-      const textColor = '#555555';
-      const mutedColor = '#888888';
-      const lineGray = '#e5e7eb';
+      const pageLeft = doc.page.margins.left;                       // 40
+      const pageRight = doc.page.width - doc.page.margins.right;     // ~555
+      const contentWidth = pageRight - pageLeft;
+      const code = bookingData.bookingCode || '';
 
       const logoPngPath = path.join(__dirname, '../assets/brand.png');
-      let hasLogo = fs.existsSync(logoPngPath);
+      const hasLogo = fs.existsSync(logoPngPath);
 
-      // 1. TOP HEADER
-      doc.font('Helvetica-Bold').fontSize(16).fillColor(darkColor).text('E-ticket ', 40, 40, { continued: true })
-         .font('Helvetica').fillColor(mutedColor).text('/ E-tiket');
-      
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(darkColor).text('Departure Flight ', 40, 60, { continued: true })
-         .font('Helvetica').fillColor(mutedColor).text('/ Penerbangan Pergi');
-      
-      // Top Right Logo (flex-end)
+      // ---- 1. HEADER -------------------------------------------------------
+      let y = 40;
       if (hasLogo) {
-         doc.image(logoPngPath, doc.page.width - 180, 20, { fit: [140, 50], align: 'right' });
+        doc.image(logoPngPath, pageLeft, y, { fit: [130, 40] });
       } else {
-         doc.font('Helvetica-Bold').fontSize(32).fillColor(primaryColor).text('TiketQ', doc.page.width - 150, 25);
+        doc.font('Helvetica-Bold').fontSize(26).fillColor(BRAND).text('TiketQ', pageLeft, y);
       }
-      
-      doc.moveTo(40, 90).lineTo(doc.page.width - 40, 90).strokeColor(lineGray).stroke();
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(DARK)
+        .text('E-Ticket ', pageLeft, y + 34, { continued: true })
+        .font('Helvetica').fillColor(MUTED).text('/ E-tiket');
 
-      // 2. MIDDLE SECTION (Airline, Flight Timeline, Booking Info)
-      let currentY = 110;
+      // ISSUED badge (top right)
+      const badgeText = 'ISSUED';
+      const badgeW = 74;
+      const badgeH = 22;
+      const badgeX = pageRight - badgeW;
+      doc.roundedRect(badgeX, y + 2, badgeW, badgeH, 11).fill(BRAND);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#FFFFFF')
+        .text(badgeText, badgeX, y + 8, { width: badgeW, align: 'center' });
 
-      // Left Column: Airline Logo text
-      doc.font('Helvetica-Bold').fontSize(24).fillColor(primaryColor).text('TiketQ Air', 40, currentY);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(darkColor).text('TiketQ Airlines (Indonesia)', 40, currentY + 30);
-      doc.font('Helvetica').text('TK-391', 40, currentY + 42);
-      doc.text('Economy', 40, currentY + 54);
+      y += 60;
+      doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(1).strokeColor(LINE).stroke();
 
-      // Middle Column: Flight Timeline
-      const timeX = 180;
-      const timelineX = 230;
-      const textX = 250;
+      // ---- 2. BOOKING REFERENCE BLOCK (with QR) ----------------------------
+      y += 20;
+      const blockH = 96;
+      doc.roundedRect(pageLeft, y, contentWidth, blockH, 8).fill(BRAND_SOFT);
+      doc.roundedRect(pageLeft, y, contentWidth, blockH, 8).lineWidth(1).strokeColor(BRAND_BORDER).stroke();
 
-      const departureDate = new Date(bookingData.departureDate);
-      const dateStr = departureDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(darkColor).text(dateStr, timeX, currentY);
-      
-      let flightY = currentY + 20;
-      // Departure Point
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(darkColor).text('10:30', timeX, flightY);
-      doc.circle(timelineX, flightY + 6, 4).fill(primaryColor);
-      
-      // Add `{ width: 140 }` constraint to prevent it from bleeding into the Booking column
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(darkColor).text(bookingData.origin, textX, flightY, { width: 140 });
-      doc.font('Helvetica').fontSize(9).fillColor(textColor).text('Origin Airport - Terminal Departure', textX, flightY + 14, { width: 140 });
+      const refPadX = 22;
+      const col1X = pageLeft + refPadX;
+      const col2X = pageLeft + 210;
 
-      // Draw vertical line for timeline
-      doc.moveTo(timelineX, flightY + 12).lineTo(timelineX, flightY + 60).strokeColor(lineGray).stroke();
-
-      flightY += 65;
-      // Arrival Point
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(darkColor).text('12:00', timeX, flightY);
-      doc.circle(timelineX, flightY + 6, 4).lineWidth(2).strokeColor(primaryColor).stroke(); // Hollow circle
-      
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(darkColor).text(bookingData.destination, textX, flightY, { width: 140 });
-      doc.font('Helvetica').fontSize(9).fillColor(textColor).text('Destination Airport - Terminal Arrival', textX, flightY + 14, { width: 140 });
-
-      // Right Column: Booking Info
-      let rightY = 110;
-      const rightX = doc.page.width - 180;
-
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(darkColor).text('TiketQ Booking ID', rightX, rightY);
-      doc.font('Helvetica').fontSize(8).fillColor(mutedColor).text('No. Pesanan', rightX, rightY + 12);
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(darkColor).text(bookingData.bookingCode, rightX, rightY + 24);
-
-      rightY += 45;
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(darkColor).text('Airline Booking Code (PNR)', rightX, rightY);
-      doc.font('Helvetica').fontSize(8).fillColor(mutedColor).text('Kode Booking Maskapai (PNR)', rightX, rightY + 12);
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(darkColor).text(bookingData.bookingCode, rightX, rightY + 24);
-
-      rightY += 45;
-      doc.font('Helvetica').fontSize(8).fillColor(textColor).text('Ada batas waktu untuk refund (pelajari lewat E-tiket di App).', rightX, rightY, { width: 150 });
-      
-      rightY += 30;
-      // Add QR Code at the bottom of the right column
+      // QR (right side of block)
+      const qrSize = 70;
+      const qrX = pageRight - refPadX - qrSize;
+      const qrY = y + (blockH - qrSize) / 2;
       try {
-        const qrBuffer = await QRCode.toBuffer('https://tiketq.com');
-        doc.image(qrBuffer, rightX, rightY, { width: 50 });
+        const qrBuffer = await QRCode.toBuffer(APP_URL(code), { margin: 0 });
+        doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
       } catch (err) {
-        console.error("QR Code generation failed for PDF", err);
+        console.error('QR Code generation failed for PDF', err);
+      }
+      doc.font('Helvetica').fontSize(7).fillColor(MUTED)
+        .text('Scan to open in app', qrX - 8, qrY + qrSize + 4, { width: qrSize + 16, align: 'center' });
+
+      // Left: TiketQ Booking ID
+      let refY = y + 18;
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK).text('TiketQ Booking ID', col1X, refY);
+      doc.font('Helvetica').fontSize(7.5).fillColor(MUTED).text('No. Pesanan', col1X, refY + 12);
+      doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND).text(code, col1X, refY + 26);
+
+      // Middle: PNR
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK).text('Airline Booking Code (PNR)', col2X, refY);
+      doc.font('Helvetica').fontSize(7.5).fillColor(MUTED).text('Kode Booking Maskapai', col2X, refY + 12);
+      doc.font('Helvetica-Bold').fontSize(16).fillColor(DARK).text(code, col2X, refY + 26);
+
+      y += blockH + 26;
+
+      // ---- 3. ROUTE SECTION ------------------------------------------------
+      doc.font('Helvetica-Bold').fontSize(12).fillColor(DARK).text('Flight ', pageLeft, y, { continued: true })
+        .font('Helvetica').fillColor(MUTED).text('/ Penerbangan');
+      y += 24;
+
+      const routeColW = 200;
+      // Origin (left)
+      doc.font('Helvetica-Bold').fontSize(15).fillColor(DARK)
+        .text(bookingData.origin || '-', pageLeft, y, { width: routeColW });
+      doc.font('Helvetica').fontSize(8).fillColor(MUTED).text('ORIGIN', pageLeft, y + 22);
+
+      // Destination (right, right-aligned)
+      doc.font('Helvetica-Bold').fontSize(15).fillColor(DARK)
+        .text(bookingData.destination || '-', pageRight - routeColW, y, { width: routeColW, align: 'right' });
+      doc.font('Helvetica').fontSize(8).fillColor(MUTED)
+        .text('DESTINATION', pageRight - routeColW, y + 22, { width: routeColW, align: 'right' });
+
+      // Connector line + arrow in the middle
+      const midY = y + 9;
+      const lineStart = pageLeft + routeColW + 12;
+      const lineEnd = pageRight - routeColW - 12;
+      if (lineEnd > lineStart) {
+        doc.moveTo(lineStart, midY).lineTo(lineEnd, midY).lineWidth(1.5).strokeColor(BRAND).stroke();
+        doc.circle(lineStart, midY, 2.5).fill(BRAND);
+        doc.circle(lineEnd, midY, 2.5).fill(BRAND);
       }
 
-      // Fix Overlap: We calculate the maximum Y attained by all 3 columns
-      currentY = Math.max(flightY + 40, rightY + 70);
-      
-      doc.moveTo(40, currentY).lineTo(doc.page.width - 40, currentY).strokeColor(lineGray).stroke();
+      y += 40;
+      // Departure date (centered)
+      const dateStr = formatDepartureDate(bookingData.departureDate);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(DARK)
+        .text(dateStr ? `Departure: ${dateStr}` : 'Departure date unavailable', pageLeft, y, {
+          width: contentWidth, align: 'center',
+        });
+      y += 16;
+      doc.font('Helvetica').fontSize(8).fillColor(MUTED)
+        .text('Live schedule & times: view your e-ticket in the TiketQ app', pageLeft, y, {
+          width: contentWidth, align: 'center',
+        });
 
-      // 3. INFO HIGHLIGHTS
-      currentY += 15;
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(darkColor);
-      
-      // Icon 1
-      doc.rect(40, currentY, 15, 15).strokeColor(primaryColor).stroke();
-      doc.text('Tunjukkan e-tiket dan', 65, currentY);
-      doc.text('paspor para penumpang', 65, currentY + 12);
-      doc.text('saat check-in', 65, currentY + 24);
+      y += 26;
+      doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(1).strokeColor(LINE).stroke();
 
-      // Icon 2
-      doc.circle(230, currentY + 7, 8).strokeColor(primaryColor).stroke();
-      doc.text('Check-in paling lambat', 250, currentY);
-      doc.text('90 menit sebelum', 250, currentY + 12);
-      doc.text('keberangkatan', 250, currentY + 24);
+      // ---- 4. PASSENGER TABLE ---------------------------------------------
+      y += 22;
+      doc.font('Helvetica-Bold').fontSize(12).fillColor(DARK).text('Passenger Details ', pageLeft, y, { continued: true })
+        .font('Helvetica').fillColor(MUTED).text('/ Detail Penumpang');
+      y += 22;
 
-      // Icon 3
-      doc.circle(410, currentY + 7, 8).strokeColor(primaryColor).stroke();
-      doc.text('Waktu tertera adalah', 430, currentY + 6);
-      doc.text('waktu bandara setempat', 430, currentY + 18);
+      // Column layout
+      const cNo = pageLeft + 10;
+      const cName = pageLeft + 45;
+      const cClass = pageLeft + 300;
+      const cBooking = pageLeft + 400;
+      const headH = 26;
 
-      currentY += 50;
-      doc.moveTo(40, currentY).lineTo(doc.page.width - 40, currentY).strokeColor(lineGray).stroke();
+      doc.rect(pageLeft, y, contentWidth, headH).fill(TABLE_HEAD);
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(DARK);
+      doc.text('NO.', cNo, y + 9);
+      doc.text('PASSENGER NAME', cName, y + 9);
+      doc.text('CABIN CLASS', cClass, y + 9);
+      doc.text('BOOKING CODE', cBooking, y + 9);
+      y += headH;
 
-      // 4. PASSENGER DETAILS
-      currentY += 30;
-      doc.font('Helvetica-Bold').fontSize(14).fillColor(darkColor).text('Passenger Details', 40, currentY);
-      doc.font('Helvetica').fontSize(10).fillColor(mutedColor).text('Detail Penumpang', 40, currentY + 16);
+      const passengers = (bookingData.passengers && bookingData.passengers.length > 0)
+        ? bookingData.passengers
+        : [{ firstName: bookingData.name || 'Passenger', lastName: '', cabinClass: 'economy' }];
 
-      currentY += 35;
-      
-      // Table Header (Gray Background)
-      doc.rect(40, currentY, doc.page.width - 80, 40).fill('#f8f9fa');
-      
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(darkColor);
-      doc.text('No.', 50, currentY + 8);
-      doc.text('Passenger(s)', 80, currentY + 8);
-      doc.text('Route', 260, currentY + 8);
-      doc.text('Flight Facilities', 330, currentY + 8);
-      doc.text('Ticket Number', doc.page.width - 150, currentY + 8);
-
-      doc.font('Helvetica').fontSize(8).fillColor(mutedColor);
-      doc.text('No.', 50, currentY + 22);
-      doc.text('Nama Penumpang', 80, currentY + 22);
-      doc.text('Rute', 260, currentY + 22);
-      doc.text('Fasilitas Penerbangan', 330, currentY + 22);
-      doc.text('Nomor Tiket', doc.page.width - 150, currentY + 22);
-
-      currentY += 45;
-
-      // Passengers List
-      const passengersList = bookingData.passengers && bookingData.passengers.length > 0 ? bookingData.passengers : [{ title: '', firstName: bookingData.name, lastName: '' }];
-      
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(darkColor);
-      
-      // We will parse out 3 letter codes for route if possible, else just use first 3 letters
-      const originCode = bookingData.origin.match(/\(([A-Z]{3})\)/) ? bookingData.origin.match(/\(([A-Z]{3})\)/)[1] : bookingData.origin.substring(0, 3).toUpperCase();
-      const destCode = bookingData.destination.match(/\(([A-Z]{3})\)/) ? bookingData.destination.match(/\(([A-Z]{3})\)/)[1] : bookingData.destination.substring(0, 3).toUpperCase();
-      const routeText = `${originCode} - ${destCode}`;
-
-      passengersList.forEach((p, i) => {
-        // No
-        doc.font('Helvetica').text(`${i + 1}.`, 50, currentY);
-        
-        // Name
-        const fullName = `${(p.title || '').toUpperCase()} ${(p.firstName || p.first_name || '').toUpperCase()} ${(p.lastName || p.last_name || '').toUpperCase()}`;
-        doc.font('Helvetica-Bold').text(fullName, 80, currentY, { width: 170 });
-        doc.font('Helvetica').fontSize(8).text('(Dewasa)', 80, currentY + 12);
-        
-        // Route (Pill shape)
-        doc.roundedRect(260, currentY - 2, 55, 14, 7).strokeColor(lineGray).stroke();
-        doc.font('Helvetica-Bold').fontSize(7).text(routeText, 260, currentY + 1.5, { width: 55, align: 'center' });
-        
-        // Facilities - FIXED X COORDINATE to MATCH HEADER (330 instead of 350)
-        doc.font('Helvetica-Bold').fontSize(9).text('7 KG Bagasi Kabin', 330, currentY);
-        doc.font('Helvetica').fontSize(8).text('*Dimensi bagasi mengikuti kebijakan maskapai', 330, currentY + 12, { width: 120 });
-        doc.font('Helvetica-Bold').fontSize(9).text('0 KG Bagasi', 330, currentY + 35);
-        
-        // Ticket Number
-        doc.font('Helvetica-Bold').fontSize(9).text(bookingData.bookingCode, doc.page.width - 150, currentY);
-
-        currentY += 60;
+      const rowH = 28;
+      passengers.forEach((p, i) => {
+        const rowY = y + 9;
+        doc.font('Helvetica').fontSize(9).fillColor(TEXT).text(`${i + 1}.`, cNo, rowY);
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK)
+          .text(fullName(p) || '-', cName, rowY, { width: cClass - cName - 10 });
+        doc.font('Helvetica').fontSize(9).fillColor(TEXT)
+          .text(capitalize(p.cabinClass) || 'Economy', cClass, rowY, { width: cBooking - cClass - 10 });
+        doc.font('Helvetica').fontSize(9).fillColor(TEXT).text(code, cBooking, rowY);
+        y += rowH;
+        doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(0.5).strokeColor(LINE).stroke();
       });
 
+      // ---- 5. IMPORTANT INFO ----------------------------------------------
+      y += 22;
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(DARK).text('Important Information ', pageLeft, y, { continued: true })
+        .font('Helvetica').fillColor(MUTED).text('/ Informasi Penting');
+      y += 20;
+
+      const notes = [
+        'Show this e-ticket and each passenger’s passport / ID at check-in.',
+        'Check-in at least 90 minutes before departure. / Check-in paling lambat 90 menit sebelum keberangkatan.',
+        'All times shown are local airport time. / Waktu tertera adalah waktu bandara setempat.',
+      ];
+      doc.font('Helvetica').fontSize(9).fillColor(TEXT);
+      notes.forEach((n) => {
+        doc.circle(pageLeft + 3, y + 5, 2).fill(BRAND);
+        doc.fillColor(TEXT).text(n, pageLeft + 14, y, { width: contentWidth - 14 });
+        y = doc.y + 8;
+      });
+
+      // ---- 6. FOOTER -------------------------------------------------------
+      const footerY = doc.page.height - doc.page.margins.bottom - 46;
+      doc.moveTo(pageLeft, footerY).lineTo(pageRight, footerY).lineWidth(1).strokeColor(LINE).stroke();
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(BRAND).text('TiketQ', pageLeft, footerY + 12);
+      doc.font('Helvetica').fontSize(8).fillColor(MUTED)
+        .text('Need help? support@tiketq.com', pageLeft, footerY + 24);
+      doc.font('Helvetica').fontSize(8).fillColor(BRAND)
+        .text(APP_URL(code), pageLeft, footerY + 12, {
+          width: contentWidth, align: 'right', link: APP_URL(code),
+        });
 
       doc.end();
     } catch (err) {
@@ -202,5 +230,5 @@ async function generateTicketPDF(bookingData) {
 }
 
 module.exports = {
-  generateTicketPDF
+  generateTicketPDF,
 };
