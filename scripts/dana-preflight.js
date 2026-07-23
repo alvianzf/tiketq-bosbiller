@@ -30,6 +30,13 @@ if (missing.length > 0) {
 const env = (process.env.DANA_ENV || process.env.ENV || '').trim().toLowerCase();
 const isSandbox = env === 'sandbox' || env === '';
 if (!isSandbox) {
+  if (!process.env.DANA_NOTIFY_URL) {
+    // Without this, danaService falls back to DANA_ORIGIN (the FRONTEND domain),
+    // so DANA posts Finish Notify to a 404 and paid bookings never fulfill
+    // (prod incident 2026-07-23, booking NJUBID). Must be the backend origin,
+    // e.g. https://api.tiketq.com — the /api/dana-notify-callback path is appended.
+    fail('DANA_NOTIFY_URL must be set in production (backend origin, e.g. https://api.tiketq.com); the fallback points notifies at the frontend, which 404s.');
+  }
   if (!process.env.DANA_WEBHOOK_PUBLIC_KEY && !process.env.DANA_WEBHOOK_PUBLIC_KEY_PATH) {
     // Not fatal: without DANA's public key the notify webhook falls back to
     // confirming each notification via queryPayment (see routes/api/dana-notify-callback.js).

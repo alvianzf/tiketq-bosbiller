@@ -97,15 +97,29 @@ async function fulfillFlightBooking(bookingCode) {
   const requestData = { f: "payment", bookingCode, nominal: booking.nominal };
 
   let issueSuccess = false;
+  let issuePending = false;
   try {
     const providerResult = await apiService.fetchData(requestData);
     if (providerResult && providerResult.data && providerResult.data.rc === "00") {
       issueSuccess = true;
+    } else if (providerResult?.data?.rc === "32" || providerResult?.data?.status === "ONPROGRESS") {
+      // rc 32 = "Proses Issued Sedang Berlangsung": the provider accepted the
+      // payment and is issuing asynchronously. Not a failure — poll bookInfo
+      // until the ticket lands (observed live on booking NJUBID, 2026-07-23).
+      issuePending = true;
     } else {
       console.error(`Failed to issue flight ticket on provider side (non-zero rc): ${providerResult?.data?.msg || providerResult?.message}`);
     }
   } catch (e) {
     console.error("Failed to issue ticket on provider side (exception):", e.message);
+  }
+
+  if (issuePending) {
+    // Let the FE advance off the "checking payment" page: payment is settled,
+    // the e-ticket page will show the ONPROGRESS state until the next update.
+    emitBookingUpdate(bookingCode);
+    pollUntilIssued(bookingCode, booking.id);
+    return { settled: true, pending: true };
   }
 
   if (!issueSuccess) {
@@ -122,13 +136,20 @@ async function fulfillFlightBooking(bookingCode) {
 
   // E-ticket email is non-critical for the webhook ack: run it after
   // returning. Idempotency comes from the claim; all errors stay logged.
+  sendFlightEticketEmail(booking.id);
+
+  return { settled: true };
+}
+
+/** Fire-and-forget e-ticket + invoice email for an issued flight booking. */
+function sendFlightEticketEmail(bookingId) {
   (async () => {
     try {
       const { generateTicketPDF } = require('./pdfService');
       const { generateInvoicePDF } = require('./invoiceService');
       const { sendBookingEmail } = require('./emailService');
 
-      const fullBooking = await FlightBookingDAO.findBookingById(booking.id);
+      const fullBooking = await FlightBookingDAO.findBookingById(bookingId);
       const [pdfBuffer, invoiceBuffer] = await Promise.all([
         generateTicketPDF(fullBooking),
         generateInvoicePDF(fullBooking),
@@ -138,8 +159,47 @@ async function fulfillFlightBooking(bookingCode) {
       console.error("Failed to generate/send e-ticket:", emailErr);
     }
   })();
+}
 
-  return { settled: true };
+const ISSUE_POLL_INTERVAL_MS = 15000;
+const ISSUE_POLL_MAX_ATTEMPTS = 40; // 40 × 15s = 10 minutes
+
+/**
+ * Background poll for an async provider issuance (rc 32 / ONPROGRESS): checks
+ * bookInfo until the ticket is ISSUED, then finishes the normal settlement
+ * (mark issued, notify FE, email). Flags TICKET_FAILED only on a terminal
+ * provider status or timeout — payment_status stays true throughout.
+ */
+function pollUntilIssued(bookingCode, bookingId) {
+  (async () => {
+    for (let attempt = 1; attempt <= ISSUE_POLL_MAX_ATTEMPTS; attempt++) {
+      await new Promise((r) => setTimeout(r, ISSUE_POLL_INTERVAL_MS));
+      let status;
+      try {
+        const info = await apiService.fetchBookingInfo(bookingCode);
+        status = info?.data?.status;
+      } catch (e) {
+        console.error(`Issue poll for ${bookingCode} (attempt ${attempt}) failed:`, e.message);
+        continue;
+      }
+      if (status === "ISSUED") {
+        await FlightBookingDAO.markTicketIssued(bookingCode);
+        console.log(`Successfully settled booking ${bookingCode} (issued after poll ${attempt})`);
+        emitBookingUpdate(bookingCode);
+        sendFlightEticketEmail(bookingId);
+        return;
+      }
+      if (status && status !== "ONPROGRESS") {
+        console.error(`CRITICAL: Payment settled for booking ${bookingCode}, but provider issuance ended as ${status}.`);
+        await FlightBookingDAO.markTicketFailed(bookingCode);
+        emitBookingUpdate(bookingCode);
+        return;
+      }
+    }
+    console.error(`CRITICAL: Payment settled for booking ${bookingCode}, but issuance still ONPROGRESS after ${ISSUE_POLL_MAX_ATTEMPTS} polls; flagging for ops.`);
+    await FlightBookingDAO.markTicketFailed(bookingCode);
+    emitBookingUpdate(bookingCode);
+  })().catch((e) => console.error(`Issue poll for ${bookingCode} crashed:`, e));
 }
 
 module.exports = { fulfillFerryBooking, fulfillFlightBooking };
