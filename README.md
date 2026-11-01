@@ -40,7 +40,8 @@ LION_AIR_API_KEY="api_key"
 # AI Chatbot (OpenAI-compatible endpoint, not api.openai.com)
 SUMOPOD_API_KEY="sk-..."       # NOT OPENAI_API_KEY
 AI_BASE_URL="https://..."      # custom OpenAI-compatible base URL
-AI_MODEL="gemini/gemini-2.5-flash-lite"
+AI_MODEL="mimo-v2.5"
+AI_MODEL_FALLBACK="qwen3.6-flash"
 ```
 
 > `scripts/dana-preflight.js` runs automatically before `npm run start` (via the `prestart` script) and fails fast if the DANA vars are missing or the private key can't sign.

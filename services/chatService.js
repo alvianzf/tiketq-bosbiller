@@ -12,6 +12,21 @@ function getOpenAI() {
   return openaiInstance;
 }
 
+const AI_MODEL = process.env.AI_MODEL || "mimo-v2.5";
+const AI_MODEL_FALLBACK = process.env.AI_MODEL_FALLBACK || "qwen3.6-flash";
+
+// The provider retires model ids without notice (gemini-2.5-flash-lite vanished
+// 2026-08), which takes the chatbot down. Retry once on the fallback model.
+async function createCompletion(payload) {
+  const openai = getOpenAI();
+  try {
+    return await openai.chat.completions.create({ ...payload, model: AI_MODEL });
+  } catch (err) {
+    console.error(`Chat model ${AI_MODEL} failed, falling back to ${AI_MODEL_FALLBACK}:`, err.message);
+    return await openai.chat.completions.create({ ...payload, model: AI_MODEL_FALLBACK });
+  }
+}
+
 const tools = [
   {
     type: "function",
@@ -646,7 +661,6 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
   }
 
   async processMessage(sessionId, messageText, socket) {
-    const openai = getOpenAI();
     const messages = this.getSession(sessionId);
 
     messages.push({ role: "user", content: messageText });
@@ -654,8 +668,7 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
     try {
       socket.emit("chat:typing");
 
-      let response = await openai.chat.completions.create({
-        model: process.env.AI_MODEL || "gemini/gemini-2.5-flash-lite",
+      let response = await createCompletion({
         messages: trimMessages(messages),
         tools: tools,
         tool_choice: "auto",
@@ -687,8 +700,7 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
         }
 
         socket.emit("chat:typing");
-        response = await openai.chat.completions.create({
-          model: process.env.AI_MODEL || "gemini/gemini-2.5-flash-lite",
+        response = await createCompletion({
           messages: trimMessages(messages),
           tools: tools,
           tool_choice: "auto",
