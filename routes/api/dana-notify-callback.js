@@ -39,6 +39,40 @@ async function confirmPaidWithDana(bookingNo) {
   }
 }
 
+const EXT_PREFIX = 'EXT-';
+
+/**
+ * Forwards a verified DANA notification to the external product behind
+ * /api/dana-proxy (see routes/api/dana-proxy/index.js). Single attempt, no
+ * retry queue — acceptable for the stopgap, but means a down external
+ * endpoint silently drops the notification; the external product should also
+ * be able to confirm status via DANA's queryPayment if it needs a backstop.
+ */
+async function forwardToExternalProduct({ referenceNo, status, amount }) {
+  const url = process.env.DANA_PROXY_WEBHOOK_URL;
+  const secret = process.env.DANA_PROXY_SHARED_SECRET;
+  if (!url || !secret) {
+    console.error(`DANA notify for ${referenceNo}: DANA_PROXY_WEBHOOK_URL/DANA_PROXY_SHARED_SECRET not set, cannot forward`);
+    return;
+  }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    try {
+      await fetch(url, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', 'X-Service-Key': secret },
+        body: JSON.stringify({ referenceNo, status, amount }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (error) {
+    console.error(`DANA notify forward to external product failed for ${referenceNo}:`, error.message);
+  }
+}
+
 /**
  * DANA Finish Notify webhook (registered as the merchant's "Finish Payment URL").
  * DANA calls this after a payment attempt completes; we must ack with
@@ -76,6 +110,18 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // Orders created through the external-product proxy (routes/api/dana-proxy)
+    // use EXT-prefixed reference numbers and own no ferry/flight booking here —
+    // forward the verified result instead of trying to fulfill a local booking.
+    if (bookingNo && bookingNo.startsWith(EXT_PREFIX)) {
+      if (latestTransactionStatus === '00' && !webhookParser && !(await confirmPaidWithDana(bookingNo))) {
+        console.error(`DANA notify for ${bookingNo} claims paid but queryPayment did not confirm; rejecting.`);
+        return res.status(500).json({ responseCode: '5005601', responseMessage: 'Internal Server Error' });
+      }
+      await forwardToExternalProduct({ referenceNo: bookingNo, status: latestTransactionStatus, amount });
+      return res.status(200).json({ responseCode: '2005600', responseMessage: 'Successful' });
+    }
+
     if (latestTransactionStatus === '00') {
       // Without signature verification the notify content is untrusted: confirm
       // the payment status with DANA directly before marking anything paid.
