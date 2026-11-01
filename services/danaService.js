@@ -18,6 +18,9 @@ const PAY_METHOD_MAP = {
   MANDIRI: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_MANDIRI' },
   CIMB: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_CIMB' },
   PANIN: { payMethod: 'VIRTUAL_ACCOUNT', payOption: 'VIRTUAL_ACCOUNT_PANI' },
+  // QRIS — requires a DANA_STORE_ID (externalStoreId) registered with DANA; a
+  // merchant with no registered shop gets 4005401/4045408 for this method.
+  QRIS: { payMethod: 'NETWORK_PAY', payOption: 'NETWORK_PAY_PG_QRIS' },
 };
 
 /**
@@ -92,14 +95,21 @@ function normalizePaymentResponse(body, methodKey, fallbackExpiry) {
   const vaInfo = ai.virtualAccountInfo || {};
   const vaNumber = vaInfo.virtualAccountCode || ai.paymentCode || null;
   const redirectUrl = body.webRedirectUrl || null;
+  // QRIS field name is unconfirmed live (no registered shop to test against
+  // yet) — check the candidates DANA's SNAP docs/SDK use and fall back to
+  // `raw` for debugging if none match.
+  const qrContent = methodKey === 'QRIS'
+    ? (ai.qrContent || ai.qrCode || ai.qrString || body.qrContent || body.qrCode || null)
+    : null;
+  const isQris = methodKey === 'QRIS';
   // BALANCE (DANA wallet) returns a redirect URL and no VA number.
-  const isRedirect = !vaNumber && !!redirectUrl;
+  const isRedirect = !isQris && !vaNumber && !!redirectUrl;
   return {
     method: methodKey,
-    kind: isRedirect ? 'REDIRECT' : 'VA',
-    // The Virtual Account number the customer transfers to (null for redirect).
+    kind: isQris ? 'QR' : (isRedirect ? 'REDIRECT' : 'VA'),
+    // The Virtual Account number the customer transfers to (null for redirect/QR).
     paymentCode: vaNumber,
-    qrContent: null,
+    qrContent,
     vaNumber,
     redirectUrl,
     expiryTime: vaInfo.virtualAccountExpiryTime || ai.expiryTime || fallbackExpiry,
@@ -109,6 +119,36 @@ function normalizePaymentResponse(body, methodKey, fallbackExpiry) {
     responseMessage: body.responseMessage,
     raw: body,
   };
+}
+
+/**
+ * Queries DANA directly for a transaction's current status. Used by the
+ * external-product proxy's status-check endpoint as a fallback when the
+ * notify webhook is missed (see routes/api/dana-proxy/index.js).
+ */
+async function queryPaymentStatus(referenceNo) {
+  try {
+    const result = await dana.paymentGatewayApi.queryPayment({
+      originalPartnerReferenceNo: referenceNo,
+      serviceCode: '54',
+      merchantId: process.env.DANA_MERCHANT_ID,
+    });
+    return {
+      referenceNo,
+      status: result.latestTransactionStatus,
+      amount: result.amount || null,
+      responseCode: result.responseCode,
+      responseMessage: result.responseMessage,
+    };
+  } catch (error) {
+    // The SDK throws on DANA's own 404 "Transaction Not Found" — surface that
+    // as a normal not-found result instead of a generic failure.
+    const body = error.rawResponse;
+    if (body && body.responseCode === '4045501') {
+      return { referenceNo, status: 'NOT_FOUND', amount: null, responseCode: body.responseCode, responseMessage: body.responseMessage };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -197,5 +237,6 @@ module.exports = {
   createOrder,
   createRedirectOrder,
   createNativePaymentOrder,
+  queryPaymentStatus,
   PAY_METHOD_MAP,
 };
