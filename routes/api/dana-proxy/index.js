@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const danaProxyAuth = require('../../../middleware/danaProxyAuth');
-const { createNativePaymentOrder, PAY_METHOD_MAP } = require('../../../services/danaService');
+const { createNativePaymentOrder, queryPaymentStatus, PAY_METHOD_MAP } = require('../../../services/danaService');
 
 const EXT_PREFIX = 'EXT-';
 
@@ -50,6 +50,7 @@ router.post('/create-order', async (req, res, next) => {
       vaNumber: result.vaNumber,
       redirectUrl: result.redirectUrl,
       paymentCode: result.paymentCode,
+      qrContent: result.qrContent,
       expiryTime: result.expiryTime,
       referenceNo: result.partnerReferenceNo,
     });
@@ -60,6 +61,32 @@ router.post('/create-order', async (req, res, next) => {
     }
     console.error('DANA proxy create-order error:', error.message);
     next(error);
+  }
+});
+
+/**
+ * GET /api/dana-proxy/status/:referenceNo
+ *
+ * Fallback for when the notify webhook forward (see dana-notify-callback.js)
+ * is missed or your endpoint was down — queries DANA directly for the
+ * current status of an order you created through this proxy.
+ */
+router.get('/status/:referenceNo', async (req, res, next) => {
+  try {
+    const { referenceNo } = req.params;
+    if (!referenceNo || !referenceNo.startsWith(EXT_PREFIX)) {
+      return res.status(400).json({ message: `referenceNo must start with "${EXT_PREFIX}"` });
+    }
+
+    const result = await queryPaymentStatus(referenceNo);
+    return res.json({
+      referenceNo: result.referenceNo,
+      status: result.status,
+      amount: result.amount,
+    });
+  } catch (error) {
+    console.error('DANA proxy status-check error:', error.message);
+    return res.status(502).json({ message: 'Failed to query DANA payment status' });
   }
 });
 

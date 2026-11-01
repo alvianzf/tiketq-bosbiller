@@ -72,10 +72,17 @@ X-Service-Key: <shared secret>
 | `MANDIRI` | Bank Mandiri virtual account     | `VA`             | Payer transfers to `vaNumber` from their Mandiri account/app. |
 | `CIMB`    | Bank CIMB virtual account        | `VA`             | Payer transfers to `vaNumber` from their CIMB account/app. |
 | `PANIN`   | Bank Panin virtual account       | `VA`             | Payer transfers to `vaNumber` from their Panin account/app. |
+| `QRIS`    | Scan-to-pay QR code              | `QR`             | **Not usable yet — see below.** Once live, you render `qrContent` as a QR code for the payer to scan. |
 
-QRIS and BCA are **not available** — DANA rejects them for this merchant
-account (QRIS needs a separately registered shop; BCA isn't enabled).
-Don't offer them in your UI.
+**QRIS is currently NOT usable.** It requires a DANA "shop" (`externalStoreId`)
+registered and activated on TiketQ's merchant account. As of this writing
+that shop is still pending activation on DANA's side (verified live:
+`4045408 Invalid Merchant`). Calling `create-order` with `payMethod: "QRIS"`
+today returns a `502`. TiketQ will update this doc and notify you once it's
+confirmed working — don't build against it until then.
+
+BCA is also **not available** — not enabled for this merchant account.
+Don't offer either in your UI yet.
 
 ### Success response — `200 OK`
 
@@ -91,8 +98,9 @@ Don't offer them in your UI.
 }
 ```
 
-- When `kind` is `"VA"`: show `vaNumber` and `expiryTime` to the payer. `redirectUrl` is `null`.
-- When `kind` is `"REDIRECT"` (the `DANA` method): redirect the payer's browser to `redirectUrl`. `vaNumber`/`paymentCode` are `null`.
+- When `kind` is `"VA"`: show `vaNumber` and `expiryTime` to the payer. `redirectUrl`/`qrContent` are `null`.
+- When `kind` is `"REDIRECT"` (the `DANA` method): redirect the payer's browser to `redirectUrl`. `vaNumber`/`paymentCode`/`qrContent` are `null`.
+- When `kind` is `"QR"` (the `QRIS` method, once live): render `qrContent` as a scannable QR code. `vaNumber`/`redirectUrl` are `null`.
 - `expiryTime` is in `YYYY-MM-DDTHH:mm:ss+07:00` format (GMT+7, DANA's required timezone). The payment expires at this time if unpaid.
 
 ### Error responses
@@ -150,33 +158,69 @@ X-Service-Key: <the same shared secret>
 3. **Be idempotent.** Treat a repeat delivery for a `referenceNo` you've already marked paid as a no-op, not an error. DANA/TiketQ may redeliver.
 4. **Only act on `status: "00"`.** Any other status means the payment did not succeed — release any held inventory, show the payer a failure/expiry state, etc.
 
-### Known limitation — no retry, no polling fallback
+### Known limitation — no retry on the forward
 
-This forward is **best-effort, single attempt**. If your endpoint is down or
-times out when TiketQ tries to forward, the notification is logged on
-TiketQ's side and **dropped** — it is not queued or retried. There is
-currently no endpoint for you to poll TiketQ for a payment's status as a
-backstop.
-
-**Practical implication:** keep your webhook endpoint reliably up. If you
-need a safety net, build in your own timeout logic (e.g. "if no result
-arrives within N minutes, treat the order as abandoned and tell the payer to
-contact support") — don't assume a result is guaranteed to arrive.
+This forward is still **best-effort, single attempt**. If your endpoint is
+down or times out when TiketQ tries to forward, the notification is logged
+on TiketQ's side and **dropped** — it is not queued or redelivered. Use the
+status-check endpoint below as your backstop when you suspect you missed one
+(e.g. an order sitting unresolved past its `expiryTime`).
 
 ---
 
-## 5. Summary checklist
+## 5. Checking status directly: `GET /api/dana-proxy/status/:referenceNo`
+
+A fallback for when the webhook forward above is missed — ask TiketQ
+directly for the current status of an order you created through this proxy.
+
+### Request
+
+```
+GET https://api.tiketq.com/api/dana-proxy/status/EXT-<your-order-id>
+X-Service-Key: <shared secret>
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "referenceNo": "EXT-<your-order-id>",
+  "status": "00",
+  "amount": { "value": "150000.00", "currency": "IDR" }
+}
+```
+
+`status` uses the same codes as the webhook (`"00"` = paid, `"05"` =
+expired/closed). If DANA has no record of the reference at all (e.g. you
+query before `create-order` ever succeeded, or typo'd the reference),
+`status` is `"NOT_FOUND"` and `amount` is `null`.
+
+| Status | Meaning |
+|--------|---------|
+| `200`  | Query succeeded — check `status` in the body (including `"NOT_FOUND"`). |
+| `400`  | `referenceNo` missing or doesn't start with `EXT-`. |
+| `401`  | Missing or wrong `X-Service-Key`. |
+| `502`  | DANA's gateway is unavailable or returned an unexpected error. Safe to retry after a short delay. |
+
+Don't poll this aggressively — it's meant as an occasional backstop, not a
+replacement for the webhook. A reasonable pattern: if no webhook arrives
+within a few minutes of `expiryTime`, check status once before giving up on
+the order.
+
+---
+
+## 6. Summary checklist
 
 - [ ] You have the shared secret (`X-Service-Key` value) from TiketQ, delivered out-of-band (not over email/Slack in plaintext if avoidable).
 - [ ] All `referenceNo` values you send start with `EXT-` and are unique per payment attempt.
 - [ ] `amountValue` is always a string with exactly 2 decimals.
-- [ ] You handle both `kind: "VA"` (show VA number) and `kind: "REDIRECT"` (redirect browser) responses.
+- [ ] You handle `kind: "VA"` (show VA number), `kind: "REDIRECT"` (redirect browser), and — once QRIS is confirmed live — `kind: "QR"` (render `qrContent`) responses. You are NOT using `payMethod: "QRIS"` yet.
 - [ ] You've given TiketQ your webhook URL, and it's reachable over HTTPS from the public internet.
 - [ ] Your webhook handler checks `X-Service-Key`, responds `200` fast, and is idempotent on `referenceNo`.
 - [ ] You only treat `status: "00"` as paid.
-- [ ] You have a fallback plan for the "no retry" limitation above.
+- [ ] You use `GET /api/dana-proxy/status/:referenceNo` as a backstop for orders that never get a webhook result.
 
-## 6. This is temporary
+## 7. This is temporary
 
 This proxy exists only because your product's IP isn't yet whitelisted by
 DANA directly. Once it is, TiketQ's expectation is that you integrate with
