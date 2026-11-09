@@ -257,33 +257,65 @@ model ActivityBooking {
 // flight, car rental, hotel, activity) by loose label/price — not an FK into
 // each booking table, since a bundle is assembled before those bookings exist.
 model Itinerary {
-  id          Int             @id @default(autoincrement())
-  fullName    String
-  phone       String
-  email       String
-  startDate   String
-  endDate     String?
-  notes       String?
-  status      String          @default("PENDING_REVIEW")
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  items       ItineraryItem[]
-  transaction Transaction?
+  id           Int             @id @default(autoincrement())
+  fullName     String
+  phone        String
+  email        String
+  startDate    String
+  endDate      String?
+  durationLabel String?        // client-chosen trip length, e.g. "1 Day", "6 Hours", "2 Days"
+  interests    String[]        // optional tags used when the AI assisted this build
+  notes        String?
+  status       String          @default("PENDING_REVIEW")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  items        ItineraryItem[]
+  transaction  Transaction?
 
   @@map("itineraries")
 }
 
+// One stop in a drag-and-drop built trip. destinationId is set when the stop
+// is a catalog Destination (the common case); serviceType/label/price stay
+// generic so a stop can also be a ferry/flight/car-rental/hotel/activity line
+// item. duration/travelGap are snapshotted from the Destination at build time
+// so a later catalog price/time edit doesn't retroactively change a saved plan.
 model ItineraryItem {
-  id          Int       @id @default(autoincrement())
-  itineraryId Int
-  serviceType String
-  label       String
-  price       Decimal   @default(0)
-  createdAt   DateTime  @default(now())
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  id               Int          @id @default(autoincrement())
+  itineraryId      Int
+  destinationId    Int?
+  serviceType      String
+  label            String
+  price            Decimal      @default(0)
+  order            Int          @default(0)
+  durationMinutes  Int?
+  travelGapMinutes Int?
+  createdAt        DateTime     @default(now())
+  itinerary        Itinerary    @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  destination      Destination? @relation(fields: [destinationId], references: [id])
 
   @@index([itineraryId])
   @@map("itinerary_items")
+}
+
+// Admin-managed catalog of Batam places the client drags into their trip.
+model Destination {
+  id               Int             @id @default(autoincrement())
+  name             String
+  area             String          // e.g. Nagoya, Nongsa, Barelang
+  category         String?         // Beach, Nature, Shopping, Culture, Golf, ...
+  description      String?
+  tags             String[]        // interest keywords for the AI recommender
+  minStayMinutes   Int             @default(30)
+  travelGapMinutes Int             @default(15) // default buffer to travel/arrive here
+  price            Decimal         @default(0)  // entry fee / cost per visit
+  photos           String[]
+  available        Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  itineraryItems   ItineraryItem[]
+
+  @@map("destinations")
 }
 
 enum ServiceType {

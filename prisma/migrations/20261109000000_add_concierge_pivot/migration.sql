@@ -76,6 +76,25 @@ CREATE TABLE "activity_bookings" (
 );
 
 -- CreateTable
+CREATE TABLE "destinations" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "area" TEXT NOT NULL,
+    "category" TEXT,
+    "description" TEXT,
+    "tags" TEXT[],
+    "minStayMinutes" INTEGER NOT NULL DEFAULT 30,
+    "travelGapMinutes" INTEGER NOT NULL DEFAULT 15,
+    "price" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "photos" TEXT[],
+    "available" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "destinations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "itineraries" (
     "id" SERIAL NOT NULL,
     "fullName" TEXT NOT NULL,
@@ -83,6 +102,8 @@ CREATE TABLE "itineraries" (
     "email" TEXT NOT NULL,
     "startDate" TEXT NOT NULL,
     "endDate" TEXT,
+    "durationLabel" TEXT,
+    "interests" TEXT[],
     "notes" TEXT,
     "status" TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -95,9 +116,13 @@ CREATE TABLE "itineraries" (
 CREATE TABLE "itinerary_items" (
     "id" SERIAL NOT NULL,
     "itineraryId" INTEGER NOT NULL,
+    "destinationId" INTEGER,
     "serviceType" TEXT NOT NULL,
     "label" TEXT NOT NULL,
     "price" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "durationMinutes" INTEGER,
+    "travelGapMinutes" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "itinerary_items_pkey" PRIMARY KEY ("id")
@@ -132,3 +157,6 @@ ALTER TABLE "activity_bookings" ADD CONSTRAINT "activity_bookings_activityId_fke
 
 -- AddForeignKey
 ALTER TABLE "itinerary_items" ADD CONSTRAINT "itinerary_items_itineraryId_fkey" FOREIGN KEY ("itineraryId") REFERENCES "itineraries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "itinerary_items" ADD CONSTRAINT "itinerary_items_destinationId_fkey" FOREIGN KEY ("destinationId") REFERENCES "destinations"("id") ON DELETE SET NULL ON UPDATE CASCADE;

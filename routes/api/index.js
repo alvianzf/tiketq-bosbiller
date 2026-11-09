@@ -14,6 +14,7 @@ const domains = {
   hotels: require("./hotels"),
   activities: require("./activities"),
   itinerary: require("./itinerary"),
+  destinations: require("./destinations"),
   proxy: require("./proxy"),
   health: require("./health"),
   admin: require("./admin"),

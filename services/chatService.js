@@ -226,6 +226,21 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "recommend_itinerary",
+      description: "Recommend Batam destinations for the ItinerQ trip builder based on the traveler's stated interests (and optionally how much time they have). Use this when the user asks for itinerary/trip ideas, what to do in Batam, or recommendations by interest (e.g. beaches, family, culture, nature, shopping, golf).",
+      parameters: {
+        type: "object",
+        properties: {
+          interests: { type: "array", items: { type: "string" }, description: "Interest keywords, e.g. ['beach','family','nature']" },
+          durationLabel: { type: "string", description: "Trip length the user mentioned, e.g. '1 Day', '6 Hours', '2 Days'. Optional." }
+        },
+        required: ["interests"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "show_customer_service",
       description: "Show the customer service contact card. Use this when the user asks for help, complaints, or customer service.",
       parameters: {
@@ -645,6 +660,31 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
           cars: data.cars?.length || 0,
         };
         return JSON.stringify({ email: args.email, counts, ...data });
+      }
+      else if (name === "recommend_itinerary") {
+        const res = await axios.get(`${baseUrl}/api/destinations`, {
+          params: { tags: (args.interests || []).join(","), available: true },
+        });
+        const destinations = (res.data?.data || []).slice(0, 8).map((d) => ({
+          id: d.id,
+          name: d.name,
+          area: d.area,
+          category: d.category,
+          minStayMinutes: d.minStayMinutes,
+          travelGapMinutes: d.travelGapMinutes,
+          price: d.price,
+        }));
+
+        if (destinations.length === 0) {
+          return JSON.stringify({ message: "No matching destinations found for those interests yet." });
+        }
+
+        socket.emit("chat:tool_result", {
+          type: "destination_results",
+          data: { destinations, durationLabel: args.durationLabel || null },
+        });
+
+        return JSON.stringify({ destinations, durationLabel: args.durationLabel || null });
       }
       else if (name === "show_customer_service") {
         socket.emit("chat:tool_result", {
