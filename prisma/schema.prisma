@@ -33,9 +33,15 @@ model Transaction {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   carRentalRequestId Int?              @unique
+  hotelBookingId     Int?              @unique
+  activityBookingId  Int?              @unique
+  itineraryId        Int?              @unique
   carRentalRequest   CarRentalRequest? @relation(fields: [carRentalRequestId], references: [id], onDelete: Cascade)
   ferryBooking       FerryBooking?     @relation(fields: [ferryBookingId], references: [id], onDelete: Cascade)
   flightBooking      FlightBooking?    @relation(fields: [flightBookingId], references: [id], onDelete: Cascade)
+  hotelBooking       HotelBooking?     @relation(fields: [hotelBookingId], references: [id], onDelete: Cascade)
+  activityBooking    ActivityBooking?  @relation(fields: [activityBookingId], references: [id], onDelete: Cascade)
+  itinerary          Itinerary?        @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -179,8 +185,112 @@ model CarRentalRequest {
   @@map("car_rental_requests")
 }
 
+model Hotel {
+  id          Int           @id @default(autoincrement())
+  name        String
+  location    String
+  description String?
+  pricePerNight Decimal
+  amenities   String[]
+  photos      String[]
+  available   Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  bookings    HotelBooking[]
+
+  @@map("hotels")
+}
+
+model HotelBooking {
+  id          Int          @id @default(autoincrement())
+  hotelId     Int
+  checkIn     String
+  checkOut    String
+  guests      Int          @default(1)
+  fullName    String
+  phone       String
+  email       String
+  status      String       @default("PENDING_REVIEW")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  hotel       Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  transaction Transaction?
+
+  @@map("hotel_bookings")
+}
+
+model Activity {
+  id          Int               @id @default(autoincrement())
+  name        String
+  category    String
+  location    String?
+  description String?
+  price       Decimal
+  duration    String?
+  photos      String[]
+  available   Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  bookings    ActivityBooking[]
+
+  @@map("activities")
+}
+
+model ActivityBooking {
+  id           Int          @id @default(autoincrement())
+  activityId   Int
+  date         String
+  participants Int          @default(1)
+  fullName     String
+  phone        String
+  email        String
+  status       String       @default("PENDING_REVIEW")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  activity     Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  transaction  Transaction?
+
+  @@map("activity_bookings")
+}
+
+// A traveler-built bundle referencing any mix of the other services (ferry,
+// flight, car rental, hotel, activity) by loose label/price — not an FK into
+// each booking table, since a bundle is assembled before those bookings exist.
+model Itinerary {
+  id          Int             @id @default(autoincrement())
+  fullName    String
+  phone       String
+  email       String
+  startDate   String
+  endDate     String?
+  notes       String?
+  status      String          @default("PENDING_REVIEW")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       ItineraryItem[]
+  transaction Transaction?
+
+  @@map("itineraries")
+}
+
+model ItineraryItem {
+  id          Int       @id @default(autoincrement())
+  itineraryId Int
+  serviceType String
+  label       String
+  price       Decimal   @default(0)
+  createdAt   DateTime  @default(now())
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@index([itineraryId])
+  @@map("itinerary_items")
+}
+
 enum ServiceType {
   FLIGHT
   FERRY
   CAR_RENTAL
+  HOTEL
+  ACTIVITY
+  ITINERARY
 }
