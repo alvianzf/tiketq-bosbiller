@@ -512,3 +512,23 @@ Called by DANA after a payment attempt completes (registered as the merchant's "
 ```json
 { "message": "Unauthorized. Invalid Signature" }
 ```
+
+## Concierge Pivot Domains (`/api/hotels`, `/api/activities`, `/api/destinations`, `/api/itinerary`)
+
+Added for the Batam ⇄ Malaysia ⇄ Singapore concierge pivot. Hotel/Activity are lead-request domains (same pattern as `/api/car-rental` — undocumented above, but see `routes/api/car-rental/index.js`): list/CRUD is public (no `authMiddleware`, matching the existing car-rental precedent — not something to copy into new *admin-only* routes), booking creates a `PENDING_REVIEW` row + a `Transaction`, no DANA step at submit time.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/hotels` | List hotels (`?location=`, `?available=`). |
+| `GET` / `POST` / `PUT` / `DELETE` | `/api/hotels/:id` | Hotel CRUD (admin UI). |
+| `POST` | `/api/hotels/:id/book` | Submit a stay request (`checkIn`, `checkOut`, `guests`, contact fields) → `HotelBooking` + `Transaction`. |
+| `GET` | `/api/hotels/bookings/all` / `PATCH .../:id/status` | List/update booking requests (admin). |
+| `GET` | `/api/activities` | List activities (`?category=`, `?available=`); `/categories` for the distinct list. |
+| `GET` / `POST` / `PUT` / `DELETE` | `/api/activities/:id` | Activity CRUD (admin UI). |
+| `POST` | `/api/activities/:id/book` | Submit a booking request (`date`, `participants`, contact fields) → `ActivityBooking` + `Transaction`. |
+| `GET` | `/api/activities/bookings/all` / `PATCH .../:id/status` | List/update booking requests (admin). |
+| `GET` | `/api/destinations` | List the ItinerQ catalog (`?area=`, `?category=`, `?tags=comma,separated`, `?available=`). Also used by the `recommend_itinerary` chat tool. |
+| `GET` / `POST` / `PUT` / `DELETE` | `/api/destinations/:id` | Destination CRUD (admin UI — name, area, category, tags, `minStayMinutes`, `travelGapMinutes`, price, photos). |
+| `POST` | `/api/itinerary` | Submit a built trip: `{ fullName, phone, email, startDate, durationLabel?, interests?, items: [{ destinationId, order }] }`. Each item is resolved server-side against the live `Destination` and snapshotted onto the `ItineraryItem` (label/price/duration/travel-gap) — see `ItineraryDAO.createItinerary`. Creates `Itinerary` + `ItineraryItem[]` + `Transaction`. |
+| `GET` | `/api/itinerary/:id` | Fetch a built trip with its items. |
+| `GET` | `/api/itinerary` / `PATCH /:id/status` | List/update itinerary requests (admin). |

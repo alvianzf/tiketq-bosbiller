@@ -12,6 +12,11 @@ All database calls must be wrapped in Data Access Objects located in `/db/dao/`.
 
 `ticketIssued` (flight/ferry only) tracks whether the ticket has actually been issued, separately from payment — in this codebase they happen synchronously today, so `ticketIssued` flips `true` at the same moment as `payment_status`. It gates `PATCH /api/admin/transactions/:id/cancel` and `/refund`: once `true`, cancel/refund is blocked for that booking. Car rentals have no `ticketIssued` field and are always exempt from the block.
 
+### Concierge pivot: Hotel, Activity, Destination, Itinerary
+Added for the Batam ⇄ Malaysia ⇄ Singapore concierge pivot (see repo-root `CLAUDE.md` and `tiket-FE/specs/00-OVERVIEW.md`). `Hotel`/`HotelBooking` and `Activity`/`ActivityBooking` follow the exact `Car`/`CarRentalRequest` lead-request pattern (`HotelDAO.js`, `ActivityDAO.js`) — `status: "PENDING_REVIEW"` default, a `Transaction` created alongside with the computed total, no DANA step at submit time. `Destination` is the **ItinerQ** trip-builder catalog (admin-managed via `DestinationDAO.js`); `Itinerary`/`ItineraryItem` hold a traveler's drag-and-drop trip — each `ItineraryItem` snapshots `label`/`price`/`durationMinutes`/`travelGapMinutes` from the `Destination` at build time (via `ItineraryDAO.createItinerary`), so a later catalog edit doesn't retroactively change a saved plan. `ItineraryItem.serviceType` is a free string (not the `ServiceType` enum) so a stop can be a `Destination` (`"DESTINATION"`) or a generic line item.
+
+The migration for these models (`prisma/migrations/20261109000000_add_concierge_pivot/`) is applied by the backend deploy pipeline's `prisma migrate deploy` step (`.github/workflows/deploy.yml`) — non-fatal if the DB host is unreachable, retried on the next deploy.
+
 ## Prisma Schema Exhaustive Map
 
 ```prisma
@@ -28,7 +33,7 @@ model User {
 
 model Transaction {
   id                 Int               @id @default(autoincrement())
-  serviceType        ServiceType       // Enum: FLIGHT, FERRY, CAR_RENTAL
+  serviceType        ServiceType       // Enum: FLIGHT, FERRY, CAR_RENTAL, HOTEL, ACTIVITY, ITINERARY
   bookingCode        String?           @unique
   email              String?
   basePrice          Decimal?          @default(0)
@@ -41,9 +46,15 @@ model Transaction {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   carRentalRequestId Int?              @unique
+  hotelBookingId     Int?              @unique
+  activityBookingId  Int?              @unique
+  itineraryId        Int?              @unique
   carRentalRequest   CarRentalRequest? @relation(fields: [carRentalRequestId], references: [id], onDelete: Cascade)
   ferryBooking       FerryBooking?     @relation(fields: [ferryBookingId], references: [id], onDelete: Cascade)
   flightBooking      FlightBooking?    @relation(fields: [flightBookingId], references: [id], onDelete: Cascade)
+  hotelBooking       HotelBooking?     @relation(fields: [hotelBookingId], references: [id], onDelete: Cascade)
+  activityBooking    ActivityBooking?  @relation(fields: [activityBookingId], references: [id], onDelete: Cascade)
+  itinerary          Itinerary?        @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -187,9 +198,145 @@ model CarRentalRequest {
   @@map("car_rental_requests")
 }
 
+model Hotel {
+  id          Int           @id @default(autoincrement())
+  name        String
+  location    String
+  description String?
+  pricePerNight Decimal
+  amenities   String[]
+  photos      String[]
+  available   Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  bookings    HotelBooking[]
+
+  @@map("hotels")
+}
+
+model HotelBooking {
+  id          Int          @id @default(autoincrement())
+  hotelId     Int
+  checkIn     String
+  checkOut    String
+  guests      Int          @default(1)
+  fullName    String
+  phone       String
+  email       String
+  status      String       @default("PENDING_REVIEW")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  hotel       Hotel        @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  transaction Transaction?
+
+  @@map("hotel_bookings")
+}
+
+model Activity {
+  id          Int               @id @default(autoincrement())
+  name        String
+  category    String
+  location    String?
+  description String?
+  price       Decimal
+  duration    String?
+  photos      String[]
+  available   Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  bookings    ActivityBooking[]
+
+  @@map("activities")
+}
+
+model ActivityBooking {
+  id           Int          @id @default(autoincrement())
+  activityId   Int
+  date         String
+  participants Int          @default(1)
+  fullName     String
+  phone        String
+  email        String
+  status       String       @default("PENDING_REVIEW")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  activity     Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  transaction  Transaction?
+
+  @@map("activity_bookings")
+}
+
+// A traveler-built bundle referencing any mix of the other services (ferry,
+// flight, car rental, hotel, activity) by loose label/price — not an FK into
+// each booking table, since a bundle is assembled before those bookings exist.
+model Itinerary {
+  id           Int             @id @default(autoincrement())
+  fullName     String
+  phone        String
+  email        String
+  startDate    String
+  endDate      String?
+  durationLabel String?        // client-chosen trip length, e.g. "1 Day", "6 Hours", "2 Days"
+  interests    String[]        // optional tags used when the AI assisted this build
+  notes        String?
+  status       String          @default("PENDING_REVIEW")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  items        ItineraryItem[]
+  transaction  Transaction?
+
+  @@map("itineraries")
+}
+
+// One stop in a drag-and-drop built trip. destinationId is set when the stop
+// is a catalog Destination (the common case); serviceType/label/price stay
+// generic so a stop can also be a ferry/flight/car-rental/hotel/activity line
+// item. duration/travelGap are snapshotted from the Destination at build time
+// so a later catalog price/time edit doesn't retroactively change a saved plan.
+model ItineraryItem {
+  id               Int          @id @default(autoincrement())
+  itineraryId      Int
+  destinationId    Int?
+  serviceType      String
+  label            String
+  price            Decimal      @default(0)
+  order            Int          @default(0)
+  durationMinutes  Int?
+  travelGapMinutes Int?
+  createdAt        DateTime     @default(now())
+  itinerary        Itinerary    @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  destination      Destination? @relation(fields: [destinationId], references: [id])
+
+  @@index([itineraryId])
+  @@map("itinerary_items")
+}
+
+// Admin-managed catalog of Batam places the client drags into their trip.
+model Destination {
+  id               Int             @id @default(autoincrement())
+  name             String
+  area             String          // e.g. Nagoya, Nongsa, Barelang
+  category         String?         // Beach, Nature, Shopping, Culture, Golf, ...
+  description      String?
+  tags             String[]        // interest keywords for the AI recommender
+  minStayMinutes   Int             @default(30)
+  travelGapMinutes Int             @default(15) // default buffer to travel/arrive here
+  price            Decimal         @default(0)  // entry fee / cost per visit
+  photos           String[]
+  available        Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  itineraryItems   ItineraryItem[]
+
+  @@map("destinations")
+}
+
 enum ServiceType {
   FLIGHT
   FERRY
   CAR_RENTAL
+  HOTEL
+  ACTIVITY
+  ITINERARY
 }
 ```

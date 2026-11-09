@@ -143,7 +143,7 @@ Key properties:
 
 ## 6. Tool catalog
 
-Nine tools are declared (`tools` array). Each is a typed function; the model
+Ten tools are declared (`tools` array). Each is a typed function; the model
 fills the parameters, `handleToolCall()` executes it against an internal REST
 endpoint over `http://127.0.0.1:${PORT}`, and emits a typed card.
 
@@ -157,7 +157,8 @@ endpoint over `http://127.0.0.1:${PORT}`, and emits a typed card.
 | 6 | `generate_dana_payment` | Create a DANA **bank VA** payment for a booking | `POST /api/dana/create-order` | `dana_payment` |
 | 7 | `get_booking_info` | Look up a **single** booking by its booking code | `GET /api/flight/book-info/:code` | `booking_summary` |
 | 8 | `get_booking_history` | Look up **all** bookings (flights/ferries/cars) for an email | `GET /api/history?email=` | (none — model summarizes in text) |
-| 9 | `show_customer_service` | Show the support contact card | (none) | `customer_service_card` |
+| 9 | `recommend_itinerary` | Recommend ItinerQ destinations by interest tags (+ optional trip length) | `GET /api/destinations?tags=` | `destination_results` |
+| 10 | `show_customer_service` | Show the support contact card | (none) | `customer_service_card` |
 
 Booking lookup comes in two flavours: `get_booking_info` for a single booking by
 code (renders a detail card), and `get_booking_history` for the full list tied to
@@ -207,7 +208,7 @@ Guardrails are enforced at several layers, not just the prompt:
 - **Server-authoritative money** — payment amount comes from the stored booking,
   not the conversation; the payment tool cannot be talked into a different price.
 - **History cap** — `trimMessages()` bounds context to the last 20 messages.
-- **Tool sandbox** — the model can only reach the eight declared tools; it has no
+- **Tool sandbox** — the model can only reach the ten declared tools; it has no
   arbitrary code, shell, or network capability.
 - **Error containment** — tool exceptions are returned to the model as data; API
   errors don't crash the socket.
@@ -219,9 +220,14 @@ Guardrails are enforced at several layers, not just the prompt:
 The browser (`ChatBot/useChatSocket.ts` + `ChatMessage.tsx`) treats
 `chat:tool_result` as a discriminated union on `type` and renders a card per
 kind: `flight_results`, `ferry_results`, `booking_summary`, `dana_payment`
-(VA number / QR), and `customer_service_card`. The model's `chat:response_done`
-text is shown as the narration above/around the card. Selecting a card sends a
-follow-up `chat:message` (e.g. passenger counts) back into the same session.
+(VA number / QR), `customer_service_card`, and `destination_results` (a
+compact card per recommended destination, with a link to `/itinerary` to
+build it into a trip). The model's `chat:response_done` text is shown as the
+narration above/around the card. Selecting a card sends a follow-up
+`chat:message` (e.g. passenger counts) back into the same session; any page
+can also *open* the widget with a prefilled message via the
+`tiketq:open-chat` window event (used by the ItinerQ "Ask AI for ideas"
+button) without going through a card at all.
 
 ---
 
