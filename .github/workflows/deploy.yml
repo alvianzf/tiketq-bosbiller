@@ -29,13 +29,17 @@ jobs:
             --exclude '.env*' --exclude uploads --exclude '*.log' \
             ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:tiketq-bosbiller/"
 
-      - name: Install, generate Prisma client, restart
+      - name: Install, migrate, generate Prisma client, restart
         run: |
           ssh "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
             set -e
             cd ~/tiketq-bosbiller
             npm ci --ignore-scripts
             npx prisma generate
+            # Non-fatal: the DB host has had outages before, and the app is
+            # built to run degraded without it (see db/index.js). A missed
+            # migration just gets picked up on the next deploy.
+            npx prisma migrate deploy || echo "::warning::prisma migrate deploy failed (DB unreachable?) - will retry on next deploy"
             pm2 restart backend --update-env
             sleep 5
             pm2 describe backend | grep -q "status.*online"
