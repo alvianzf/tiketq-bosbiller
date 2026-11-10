@@ -258,13 +258,19 @@ router.post("/", ensureToken, async (req, res, next) => {
       ),
     ]);
 
+    // Flat platform service fee, added on top of Sindo's authoritative
+    // per-trip price — not part of livePrice, so it can't be bypassed by
+    // whatever Sindo returns.
+    const SERVICE_FEE = 15000;
+    const totalSales = livePrice + SERVICE_FEE;
+
     // Save locally using our GUID as bookingNo
     await FerryBookingDAO.createBooking({
       bookingNo: bookingGuid,
-      nominal: livePrice.toString(),
+      nominal: totalSales.toString(),
       basePrice: livePrice,
-      serviceFee: 0,
-      totalSales: livePrice,
+      serviceFee: SERVICE_FEE,
+      totalSales,
       departureDate: formattedDate,
       returnDate: returnDate ? new Date(returnDate) : null,
       originId: originTerminal.id,
@@ -281,7 +287,9 @@ router.post("/", ensureToken, async (req, res, next) => {
       data: {
         bookingNo: bookingGuid,
         id: bookingGuid,
-        totalPrice: livePrice
+        totalPrice: totalSales,
+        basePrice: livePrice,
+        serviceFee: SERVICE_FEE
       }
     });
   } catch (error) {
@@ -325,6 +333,8 @@ router.get("/:id", ensureToken, async (req, res, next) => {
           bookingNo: dbBooking.bookingNo,
           id: dbBooking.bookingNo,
           totalPrice: Number(dbBooking.totalSales || dbBooking.nominal || 0),
+          basePrice: Number(dbBooking.basePrice || 0),
+          serviceFee: Number(dbBooking.serviceFee || 0),
           contactName: dbBooking.passengers && dbBooking.passengers.length > 0
             ? `${dbBooking.passengers[0].firstName} ${dbBooking.passengers[0].lastName}`
             : dbBooking.email,
