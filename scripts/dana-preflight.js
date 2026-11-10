@@ -27,8 +27,15 @@ if (missing.length > 0) {
   fail(`missing env vars: ${missing.join(', ')}`);
 }
 
-const env = (process.env.DANA_ENV || process.env.ENV || '').trim().toLowerCase();
-const isSandbox = env === 'sandbox' || env === '';
+const env = (process.env.DANA_ENV || '').trim().toLowerCase();
+if (env !== 'sandbox' && env !== 'production') {
+  // Blank/missing is NOT treated as sandbox here anymore: the DANA SDK's
+  // webhook verifier does that internally, which means a prod deploy that
+  // forgets this var silently accepts Finish Notify webhooks signed with
+  // DANA's public sandbox key. Force it to be explicit instead.
+  fail(`DANA_ENV must be explicitly set to "sandbox" or "production" (got ${JSON.stringify(process.env.DANA_ENV || process.env.ENV)}).`);
+}
+const isSandbox = env === 'sandbox';
 if (!isSandbox) {
   if (!process.env.DANA_NOTIFY_URL) {
     // Without this, danaService falls back to DANA_ORIGIN (the FRONTEND domain),

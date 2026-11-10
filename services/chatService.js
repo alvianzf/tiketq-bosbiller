@@ -641,13 +641,33 @@ If the user asks for customer service, help, or complaints, use the 'show_custom
         }
       }
       else if (name === "get_booking_info") {
+        // The backing route returns full passenger PII + a base64 ticket PDF
+        // (legitimately needed by the FE e-ticket page, which the user
+        // already reaches via their own emailed link — no login, per the
+        // product's no-signup UVP). Chat has no such ownership signal: any
+        // visitor who types a code gets whatever we hand back here, so only
+        // a minimal status summary goes through this path, never the PDF or
+        // passenger detail. The direct e-ticket link is the way to see more.
         const res = await axios.get(`${baseUrl}/api/flight/book-info/${args.bookingCode}`);
-        socket.emit("chat:tool_result", {
-          type: "booking_summary",
-          data: res.data?.data || null
-        });
+        const booking = res.data?.data;
+        if (!booking) {
+          return JSON.stringify({ error: "Booking not found" });
+        }
 
-        return JSON.stringify(res.data?.data || { error: "Booking not found" });
+        const firstLeg = booking.flightdetail?.[0];
+        const summary = {
+          bookingCode: booking.bookingCode,
+          status: booking.status,
+          serviceType: booking.serviceType || "FLIGHT",
+          // Route/time only (no PII) — matches what ChatMessage.tsx's
+          // booking_summary card actually reads (flightdetail[0].{origin,
+          // destination,depart,arrival}); it never rendered passengers or
+          // tiket_pdf even when the old code sent them.
+          flightdetail: firstLeg ? [{ origin: firstLeg.origin, destination: firstLeg.destination, depart: firstLeg.depart, arrival: firstLeg.arrival }] : [],
+        };
+
+        socket.emit("chat:tool_result", { type: "booking_summary", data: summary });
+        return JSON.stringify({ ...summary, note: "Full passenger details and the e-ticket PDF are only shown on the direct e-ticket page (the link sent at checkout), not through chat." });
       }
       else if (name === "get_booking_history") {
         // All bookings (flights/ferries/cars) for an email. The /api/history

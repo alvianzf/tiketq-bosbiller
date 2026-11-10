@@ -5,6 +5,20 @@ const { DanaSignatureUtil } = require('dana-node/runtime');
 const DANA_API_BASE_URL = process.env.DANA_API_BASE_URL || 'https://api.sandbox.dana.id';
 const CREATE_ORDER_PATH = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
+// A blank/missing DANA_ENV must never silently become 'sandbox': the DANA
+// SDK's webhook verifier treats '' the same as 'sandbox' and checks incoming
+// Finish Notify signatures against DANA's publicly-known sandbox key, so a
+// prod deploy that simply forgets this var would accept forged "paid"
+// webhooks. dana-preflight.js already fails fast on this before `npm start`,
+// but this module-load check is the backstop for any path that imports
+// danaService without going through that prestart script.
+const DANA_ENV = (process.env.DANA_ENV || '').trim().toLowerCase();
+if (DANA_ENV !== 'sandbox' && DANA_ENV !== 'production') {
+  throw new Error(
+    `DANA_ENV must be explicitly set to "sandbox" or "production" (got ${JSON.stringify(process.env.DANA_ENV)}). A blank value is treated as sandbox by the DANA SDK's webhook verifier, which would accept forged payment webhooks in production.`
+  );
+}
+
 // Native payment methods → DANA payMethod/payOption enums.
 // Only payment options verified working against the production merchant are
 // listed here. BCA/BTPN/PERMATA/BSI are rejected by DANA for this merchant, and
@@ -32,7 +46,7 @@ const dana = new Dana({
   partnerId: process.env.DANA_CLIENT_ID || '',
   privateKey: process.env.DANA_PRIVATE_KEY || '',
   origin: process.env.DANA_ORIGIN || 'https://tiketq.com',
-  env: process.env.DANA_ENV || 'sandbox',
+  env: DANA_ENV,
 });
 
 /**
