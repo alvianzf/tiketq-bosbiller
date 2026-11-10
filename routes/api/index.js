@@ -18,6 +18,7 @@ const domains = {
   proxy: require("./proxy"),
   health: require("./health"),
   admin: require("./admin"),
+  analytics: require("./analytics"),
 };
 
 /**

@@ -3,6 +3,7 @@ const router = express.Router();
 const { prisma } = require("../../../db/index");
 const UserDAO = require("../../../db/dao/UserDAO");
 const TransactionDAO = require("../../../db/dao/TransactionDAO");
+const PageViewDAO = require("../../../db/dao/PageViewDAO");
 const authMiddleware = require("../../../middleware/authMiddleware");
 const adminMiddleware = require("../../../middleware/adminMiddleware");
 const serverRouter = require("./server");
@@ -472,6 +473,47 @@ router.get("/operation-logs", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// --- Visitor Analytics (page views + checkout funnels) ---
+const FUNNEL_FLOWS = {
+  ferry: ["ferry_search", "ferry_list", "ferry_passenger", "ferry_payment", "ferry_success"],
+  flight: ["flight_search", "flight_list", "flight_checkout", "flight_payment", "flight_payment_success"],
+  car: ["car_list", "car_detail", "car_rent_form"],
+};
+
+const sinceFromDays = (daysParam) => {
+  const days = Math.min(Math.max(parseInt(daysParam, 10) || 7, 1), 90);
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+};
+
+// GET /api/admin/analytics/pages?days=7 - per-page view counts, avg time on page, unique sessions
+router.get("/analytics/pages", async (req, res, next) => {
+  try {
+    const pages = await PageViewDAO.topPages({ since: sinceFromDays(req.query.days) });
+    res.json({ data: pages });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/analytics/funnel?flow=ferry&days=7 - step-by-step counts for a checkout flow
+router.get("/analytics/funnel", async (req, res, next) => {
+  try {
+    const flow = req.query.flow;
+    const steps = FUNNEL_FLOWS[flow];
+    if (!steps) {
+      return res.status(400).json({ error: `Unknown flow. Expected one of: ${Object.keys(FUNNEL_FLOWS).join(", ")}` });
+    }
+    const counts = await PageViewDAO.funnelCounts({ since: sinceFromDays(req.query.days), steps });
+    res.json({ data: { flow, steps: counts } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/analytics/flows", (req, res) => {
+  res.json({ data: Object.keys(FUNNEL_FLOWS) });
 });
 
 module.exports = router;

@@ -337,6 +337,30 @@ model OperationLog {
   @@map("operation_logs")
 }
 
+// One row per page view. Created (POST /api/analytics/pageview) the moment
+// a page mounts on the client; durationMs is filled in later via
+// navigator.sendBeacon on page leave (POST /api/analytics/duration), which
+// fires reliably even on tab close — unlike a regular fetch in an unload
+// handler. funnelStep tags pages that are part of a known checkout flow
+// (ferry_*, flight_*, car_*) so the admin can chart step-by-step drop-off;
+// pages outside any funnel leave it null.
+model PageView {
+  id         String   @id // client-generated UUID, reused by the duration beacon
+  sessionId  String // client-generated, persisted in sessionStorage (one per tab session)
+  path       String
+  referrer   String?
+  funnelStep String?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([path])
+  @@index([createdAt])
+  @@index([funnelStep])
+  @@map("page_views")
+}
+
 enum ServiceType {
   FLIGHT
   FERRY
