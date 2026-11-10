@@ -94,6 +94,7 @@ const getGenderValue = (title) => {
 router.post("/", ensureToken, async (req, res, next) => {
   const {
     tripID,
+    returnTripID,
     contactEmail,
     contactMobileNumber,
     departureDate,
@@ -112,6 +113,11 @@ router.post("/", ensureToken, async (req, res, next) => {
     "destinationTerminalCode"
   ];
   if (!validateFields(requiredFields, req.body, res)) return;
+
+  const isRoundTrip = !!returnTripID;
+  if (isRoundTrip && !returnDate) {
+    return res.status(400).json({ message: "returnDate is required when returnTripID is provided." });
+  }
 
   try {
     // 1. Fetch and Locate Sindo Route GUID & Countries List concurrently
@@ -160,9 +166,58 @@ router.post("/", ensureToken, async (req, res, next) => {
     const gateClose = trip.gateClose ? trip.gateClose.replace(/:/g, "") : null;
     const formattedDate = `${normalizedDate.substring(0, 4)}-${normalizedDate.substring(4, 6)}-${normalizedDate.substring(6, 8)}`;
 
+    // 2b. Round trip: resolve the return leg the same way (swapped route,
+    // its own trip list/date) and fold it into ONE Sindo booking via
+    // returnCoreApiTrip — Sindo prices the whole round trip together
+    // (queried once below, step 5), rather than us summing two one-way
+    // fares client-side.
+    let returnCoreApiTrip = null;
+    let returnFormattedDate = null;
+    if (isRoundTrip) {
+      const returnRoute = routesList.find(r =>
+        r.embarkationPort?.code === destinationTerminalCode &&
+        r.destinationPort?.code === originTerminalCode
+      );
+      if (!returnRoute) {
+        return res.status(400).json({
+          message: `Could not find a valid Sindo Ferry return route from ${destinationTerminalCode} to ${originTerminalCode}.`
+        });
+      }
+
+      const returnNormalizedDate = returnDate.replace(/-/g, "");
+      const returnTripCacheKey = `trips:${destinationTerminalCode}:${originTerminalCode}:${returnNormalizedDate}`;
+      let returnTrips = ferryCache.get(returnTripCacheKey);
+      if (!returnTrips) {
+        const returnTripsRes = await makeRequest("get", "/Trips/GetTripWeb", {
+          embarkation: destinationTerminalCode,
+          destination: originTerminalCode,
+          tripdate: returnNormalizedDate
+        }, null, "core");
+        returnTrips = returnTripsRes.data?.data || returnTripsRes.data || [];
+        ferryCache.set(returnTripCacheKey, returnTrips, 300);
+      }
+
+      const returnTrip = returnTrips.find(t => t.tripID === returnTripID);
+      if (!returnTrip) {
+        return res.status(404).json({
+          message: `Could not find the return trip ${returnTripID} on Sindo Ferry.`
+        });
+      }
+
+      returnFormattedDate = `${returnNormalizedDate.substring(0, 4)}-${returnNormalizedDate.substring(4, 6)}-${returnNormalizedDate.substring(6, 8)}`;
+      returnCoreApiTrip = {
+        date: returnFormattedDate,
+        routeID: returnRoute.id,
+        id: returnTripID,
+        time: returnTrip.departureTime.replace(/:/g, ""),
+        gateOpen: returnTrip.gateOpen ? returnTrip.gateOpen.replace(/:/g, "") : null,
+        gateClose: returnTrip.gateClose ? returnTrip.gateClose.replace(/:/g, "") : null,
+      };
+    }
+
     // 3. Initialize Booking on Sindo Ferry
     const initBookingPayload = {
-      isRoundTrip: false,
+      isRoundTrip,
       isReturnTripOpen: false,
       departureCoreApiTrip: {
         date: formattedDate,
@@ -172,7 +227,7 @@ router.post("/", ensureToken, async (req, res, next) => {
         gateOpen: gateOpen,
         gateClose: gateClose
       },
-      returnCoreApiTrip: null
+      returnCoreApiTrip
     };
 
     const bookingResponse = await makeRequest("post", "/Agent/Booking/Bookings", initBookingPayload, req.token);
