@@ -318,6 +318,25 @@ model Destination {
   @@map("destinations")
 }
 
+// Durable write log: every create/update/upsert/delete across any model is
+// recorded here before it runs (status RUNNING) and updated after it
+// finishes (COMPLETED/FAILED). On boot, any row still RUNNING belongs to a
+// process that died mid-write — see db/index.js reconcileInterruptedOps().
+model OperationLog {
+  id         Int       @id @default(autoincrement())
+  model      String
+  operation  String
+  args       Json?
+  status     String    @default("RUNNING") // RUNNING | COMPLETED | FAILED | INTERRUPTED
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([status])
+  @@index([startedAt])
+  @@map("operation_logs")
+}
+
 enum ServiceType {
   FLIGHT
   FERRY

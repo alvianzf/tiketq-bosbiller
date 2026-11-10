@@ -455,4 +455,23 @@ router.delete("/users/:id", async (req, res, next) => {
   }
 });
 
+// GET /api/admin/operation-logs - Crash-recovery write log (see db/index.js)
+// ?status=INTERRUPTED|FAILED|RUNNING|COMPLETED, defaults to INTERRUPTED+FAILED
+router.get("/operation-logs", async (req, res, next) => {
+  try {
+    const { status, limit } = req.query;
+    const where = status ? { status } : { status: { in: ["INTERRUPTED", "FAILED"] } };
+
+    const logs = await prisma.operationLog.findMany({
+      where,
+      orderBy: { startedAt: "desc" },
+      take: Math.min(parseInt(limit, 10) || 100, 500),
+    });
+
+    res.json({ data: logs });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
